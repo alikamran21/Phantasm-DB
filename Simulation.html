@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serenity Psychiatric | EHR System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f1f5f9;
+            overflow: hidden;
+        }
+        
+        .code-font { font-family: 'Fira Code', monospace; }
+        .cyber-font { font-family: 'Orbitron', sans-serif; }
+        
+        /* Smooth page transitions */
+        .view-layer { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
+        .view-layer.active { display: flex; opacity: 1; }
+
+        /* Clinical UI Styles */
+        .clinical-shadow { box-shadow: 0 10px 25px -5px rgba(13, 148, 136, 0.1), 0 8px 10px -6px rgba(13, 148, 136, 0.1); }
+        .tab-active { border-bottom: 2px solid #0f766e; color: #0f766e; font-weight: 600; background: #f0fdfa; }
+        .tab-inactive { border-bottom: 2px solid transparent; color: #64748b; background: transparent; }
+        
+        .inner-tab-active { background-color: #0f766e; color: white; }
+        .inner-tab-inactive { background-color: #f1f5f9; color: #64748b; }
+
+        /* Hidden Admin / Forensic Theme */
+        .admin-theme { 
+            background-color: #020617 !important; 
+            color: #e2e8f0; 
+            background-image: radial-gradient(circle at 50% 0%, #0c4a6e 0%, transparent 50%);
+        }
+        .glass-panel { 
+            background: rgba(15, 23, 42, 0.6); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(14, 165, 233, 0.2); 
+            box-shadow: 0 0 30px rgba(0,0,0,0.4); 
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-4px, 4px) }
+            40% { transform: translate(-4px, -4px) }
+            60% { transform: translate(4px, 4px) }
+            80% { transform: translate(4px, -4px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-effect { animation: glitch 0.3s ease-in-out; filter: contrast(150%) hue-rotate(120deg); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .admin-theme ::-webkit-scrollbar-thumb { background: #0ea5e9; }
+
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Danger Pulse */
+        @keyframes pulse-danger {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.8); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); border-color: rgba(239, 68, 68, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); border-color: rgba(239, 68, 68, 0.8); }
+        }
+        .danger-pulse { animation: pulse-danger 2s infinite; }
+    </style>
+</head>
+<body class="h-screen w-screen relative">
+
+    <!-- ==========================================
+         VIEW 1: THE LOGIN PORTAL (Production Grade)
+    =========================================== -->
+    <div id="view-login" class="view-layer active h-full w-full items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-100">
+        <div class="bg-white w-full max-w-[440px] rounded-2xl clinical-shadow overflow-hidden border border-slate-200">
+            <!-- Header -->
+            <div class="bg-teal-800 p-8 text-center text-white relative">
+                <div class="absolute top-4 right-4 text-xs font-mono text-teal-300 opacity-50"><i class="fas fa-shield-alt"></i> AES-256</div>
+                <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20">
+                    <i class="fas fa-brain text-3xl text-teal-50"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">Serenity Psychiatric</h1>
+                <p class="text-teal-200 text-sm mt-1">EHR & Clinical Management System</p>
+            </div>
+            
+            <!-- Role Tabs -->
+            <div class="flex border-b border-slate-200 text-sm">
+                <button onclick="setLoginRole('doctor')" id="tab-doc" class="flex-1 py-4 tab-active transition hover:text-teal-700 focus:outline-none"><i class="fas fa-user-md mr-2"></i>Provider Login</button>
+                <button onclick="setLoginRole('patient')" id="tab-pat" class="flex-1 py-4 tab-inactive transition hover:text-slate-800 focus:outline-none"><i class="fas fa-user mr-2"></i>Patient Portal</button>
+            </div>
+
+            <!-- Login Form -->
+            <div class="p-8">
+                <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+                    
+                    <!-- Doctor Fields -->
+                    <div id="doctor-fields" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Provider ID (NPI)</label>
+                            <div class="relative">
+                                <i class="fas fa-id-badge absolute left-4 top-3.5 text-slate-400"></i>
+                                <input type="text" id="login-doc-id" placeholder="e.g., DOC-001" required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none transition text-sm font-semibold text-slate-700">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Security Passcode</label>
+                            <div class="relative">
+                                <i class="fas fa-key absolute left-4 top-3.5 text-slate-400"></i>
+                                <input type="password" id="login-doc-pass" placeholder="••••••••" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none transition text-sm font-semibold text-slate-700">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Fields -->
+                    <div id="patient-fields" class="space-y-5 hidden">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Patient MRN / ID</label>
+                            <div class="relative">
+                                <i class="fas fa-id-card absolute left-4 top-3.5 text-slate-400"></i>
+                                <input type="text" id="login-pat-id" placeholder="e.g., PT-101" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none transition text-sm font-semibold text-slate-700">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Attending Psychiatrist</label>
+                            <div class="relative">
+                                <i class="fas fa-user-md absolute left-4 top-3.5 text-slate-400"></i>
+                                <select id="login-pat-doc" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none transition appearance-none text-sm font-semibold text-slate-700">
+                                    <option value="">Select your doctor...</option>
+                                    <option value="Dr. Fatima">Dr. Fatima Rehman</option>
+                                    <option value="Dr. Arslan">Dr. Arslan Tariq</option>
+                                    <option value="Dr. Sarah">Dr. Sarah Jenkins</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-teal-700/30 transition flex items-center justify-center gap-2 mt-2">
+                        Authenticate Session <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                    
+                    <div id="login-error" class="hidden text-red-600 text-xs text-center font-bold bg-red-50 p-3 rounded-lg border border-red-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-circle-xmark"></i> Authentication Failed. Invalid Credentials.
+                    </div>
+                </form>
+            </div>
+            <div class="bg-slate-50 p-5 border-t border-slate-200">
+                <p class="text-[10px] text-slate-500 leading-relaxed text-justify font-medium">
+                    <strong class="text-teal-700">HIPAA COMPLIANCE:</strong> This system contains Protected Health Information (PHI). Unauthorized access or SQL injection attempts will be logged and reported to federal authorities. 
+                </p>
+                <p class="text-[8px] text-slate-300 mt-2 text-center opacity-30 cursor-default" title="Ctrl+Shift+F">SYS_ADMIN_CMD_ENABLED</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 2: DOCTOR DASHBOARD (Master-Detail)
+    =========================================== -->
+    <div id="view-doctor" class="view-layer h-full w-full bg-slate-50">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-20 lg:w-64 bg-slate-900 flex flex-col transition-all duration-300 z-20">
+            <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800">
+                <i class="fas fa-brain text-teal-500 text-2xl"></i>
+                <span class="text-white font-bold ml-3 hidden lg:block tracking-wide">Serenity EHR</span>
+            </div>
+            <nav class="flex-1 py-6 space-y-2 px-3">
+                <a href="#" class="flex items-center px-3 py-3 text-white bg-teal-600 rounded-lg shadow-md shadow-teal-900/50">
+                    <i class="fas fa-users w-6 text-center"></i>
+                    <span class="ml-3 hidden lg:block text-sm font-semibold">My Patients</span>
+                </a>
+                <a href="#" class="flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                    <i class="fas fa-calendar-alt w-6 text-center"></i>
+                    <span class="ml-3 hidden lg:block text-sm font-semibold">Schedule</span>
+                </a>
+                <a href="#" class="flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition relative">
+                    <i class="fas fa-inbox w-6 text-center"></i>
+                    <span class="ml-3 hidden lg:block text-sm font-semibold">Messages</span>
+                    <span class="absolute top-3 left-7 lg:left-auto lg:right-3 w-2 h-2 bg-red-500 rounded-full"></span>
+                </a>
+                <a href="#" class="flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                    <i class="fas fa-file-waveform w-6 text-center"></i>
+                    <span class="ml-3 hidden lg:block text-sm font-semibold">Lab Results</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="logout()" class="w-full flex items-center justify-center lg:justify-start px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt w-6 text-center"></i>
+                    <span class="ml-3 hidden lg:block text-sm font-semibold">Secure Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0">
+            <!-- Top Bar -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 clinical-shadow z-10">
+                <div class="flex items-center gap-4 w-1/2">
+                    <div class="relative w-full max-w-md">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-slate-400"></i>
+                        <input type="text" placeholder="Search patients by MRN or Name..." class="w-full pl-9 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-slate-800 leading-tight" id="doc-nav-name">Dr. Name</p>
+                        <p class="text-[10px] uppercase font-bold text-teal-600 tracking-wider" id="doc-nav-spec">Specialty</p>
+                    </div>
+                    <div class="w-10 h-10 bg-teal-100 border border-teal-200 rounded-full flex items-center justify-center text-teal-700 font-bold shadow-sm">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Master-Detail Layout -->
+            <div class="flex-1 flex overflow-hidden">
+                
+                <!-- Left: Patient List (Master) -->
+                <div class="w-80 border-r border-slate-200 bg-slate-50 flex flex-col h-full shrink-0 z-0">
+                    <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-sm">Patient Directory</h3>
+                        <span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-0.5 rounded-full border border-teal-200" id="doc-pat-count">0</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto" id="doc-patient-list">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Right: Clinical Profile (Detail) -->
+                <div class="flex-1 bg-white flex flex-col h-full relative overflow-y-auto">
+                    <!-- Empty State -->
+                    <div id="empty-profile" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+                        <i class="fas fa-folder-open text-6xl mb-4 opacity-20"></i>
+                        <p class="font-medium text-slate-500">Select a patient from the directory to view clinical details.</p>
+                    </div>
+
+                    <!-- Active Profile -->
+                    <div id="active-profile" class="hidden flex flex-col min-h-full">
+                        
+                        <!-- Profile Header -->
+                        <div class="p-8 border-b border-slate-200 bg-white">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="flex items-center gap-6">
+                                    <div class="w-20 h-20 bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center text-3xl text-slate-400 shadow-sm">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-3 mb-1">
+                                            <h1 class="text-3xl font-black text-slate-800 tracking-tight" id="prof-name">Patient Name</h1>
+                                            <span id="prof-status" class="px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded">Status</span>
+                                        </div>
+                                        <p class="text-sm text-slate-500 font-medium flex items-center gap-3">
+                                            <span><i class="fas fa-id-card mr-1"></i> MRN: <strong class="text-slate-700" id="prof-id">PT-000</strong></span>
+                                            <span><i class="fas fa-birthday-cake mr-1"></i> DOB: 14-Aug-1995 (28y)</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg text-sm font-semibold transition shadow-sm"><i class="fas fa-pen"></i> Edit</button>
+                                    <button onclick="generatePDF()" class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md shadow-teal-700/20 flex items-center gap-2">
+                                        <i class="fas fa-file-pdf"></i> Generate PDF Report
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Inner Tabs -->
+                            <div class="flex gap-2">
+                                <button onclick="switchInnerTab('overview')" id="inner-tab-overview" class="px-4 py-2 text-sm font-semibold rounded-t-lg inner-tab-active transition"><i class="fas fa-chart-pie mr-2"></i>Clinical Overview</button>
+                                <button onclick="switchInnerTab('notes')" id="inner-tab-notes" class="px-4 py-2 text-sm font-semibold rounded-t-lg inner-tab-inactive transition"><i class="fas fa-file-medical-alt mr-2"></i>Therapy Notes</button>
+                                <button onclick="switchInnerTab('rx')" id="inner-tab-rx" class="px-4 py-2 text-sm font-semibold rounded-t-lg inner-tab-inactive transition"><i class="fas fa-pills mr-2"></i>Prescriptions</button>
+                            </div>
+                        </div>
+
+                        <!-- Tab Content: Overview -->
+                        <div id="inner-content-overview" class="p-8 bg-slate-50 flex-1">
+                            <div class="grid grid-cols-2 gap-6 mb-8">
+                                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-stethoscope text-teal-600"></i> Primary Diagnosis</h3>
+                                    <p class="font-bold text-slate-800 text-lg leading-tight" id="prof-diag">Diagnosis text</p>
+                                </div>
+                                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-prescription-bottle-alt text-teal-600"></i> Active Pharmacotherapy</h3>
+                                    <p class="font-bold text-slate-800 text-lg leading-tight" id="prof-meds">Medication text</p>
+                                </div>
+                            </div>
+
+                            <h3 class="text-sm font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Psychiatric Evaluation & Symptomology</h3>
+                            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8 shadow-sm">
+                                <ul class="divide-y divide-slate-100 text-sm" id="prof-symptoms">
+                                    <!-- Injected by JS -->
+                                </ul>
+                            </div>
+
+                            <h3 class="text-sm font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Recommended Psychotherapy & Protocols</h3>
+                            <div class="grid grid-cols-1 gap-3" id="prof-exercises">
+                                <!-- Injected by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Tab Content: Notes (Dummy content for realism) -->
+                        <div id="inner-content-notes" class="p-8 bg-slate-50 flex-1 hidden">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-bold text-slate-800">Session Progress Notes</h3>
+                                <button class="bg-white border border-slate-300 text-slate-700 px-3 py-1.5 rounded text-sm font-semibold hover:bg-slate-50 shadow-sm"><i class="fas fa-plus mr-1"></i> Add Note</button>
+                            </div>
+                            <div class="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                                <!-- Timeline Item -->
+                                <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-50 bg-teal-500 text-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm">
+                                        <i class="fas fa-user-md text-sm"></i>
+                                    </div>
+                                    <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <div class="font-bold text-slate-800 text-sm">Intake Evaluation</div>
+                                            <time class="text-xs text-slate-400 font-mono">12 Oct 2025</time>
+                                        </div>
+                                        <p class="text-sm text-slate-600 leading-relaxed">Patient presented with reported symptoms consistent with primary diagnosis. Administered initial psychological inventory. Baseline established. Patient agreed to begin pharmacotherapy and CBT.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab Content: Rx (Dummy content for realism) -->
+                        <div id="inner-content-rx" class="p-8 bg-slate-50 flex-1 hidden">
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                    <h3 class="font-bold text-slate-700">Prescription History</h3>
+                                    <button class="bg-teal-600 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-teal-700 shadow-sm"><i class="fas fa-prescription mr-1"></i> E-Prescribe</button>
+                                </div>
+                                <div class="p-6 text-center text-slate-500">
+                                    <i class="fas fa-file-prescription text-4xl mb-3 text-slate-300"></i>
+                                    <p class="text-sm">Active prescriptions are listed in the Clinical Overview tab.</p>
+                                    <p class="text-xs mt-1">Full DEA scheduled substance history is currently syncing with external PMP database.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         VIEW 3: PATIENT DASHBOARD
+    =========================================== -->
+    <div id="view-patient" class="view-layer h-full w-full flex-col bg-slate-50">
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-10 clinical-shadow px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-brain text-teal-600 text-2xl"></i>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">Serenity Patient Portal</h1>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="text-right">
+                        <h2 class="font-bold text-slate-800 leading-tight text-sm" id="pat-nav-name">Patient Name</h2>
+                        <p class="text-[10px] uppercase font-bold text-teal-600 tracking-wider" id="pat-nav-id">Patient ID</p>
+                    </div>
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 border border-slate-200">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                <button onclick="logout()" class="text-slate-400 hover:text-slate-600 transition"><i class="fas fa-sign-out-alt text-lg"></i></button>
+            </div>
+        </nav>
+
+        <main class="max-w-6xl mx-auto px-8 py-8 w-full flex-1 overflow-y-auto">
+            
+            <div class="bg-gradient-to-r from-teal-800 to-teal-600 rounded-2xl p-8 text-white shadow-lg shadow-teal-900/20 mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold mb-2">Welcome to your health portal.</h2>
+                    <p class="text-teal-100">Review your treatment plan, complete assigned exercises, and message your provider.</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="bg-white/20 backdrop-blur border border-white/30 rounded-xl p-4 text-center">
+                        <p class="text-xs uppercase tracking-wider text-teal-100 font-bold mb-1">Next Appointment</p>
+                        <p class="text-xl font-bold">28-Apr-2026</p>
+                        <p class="text-sm text-teal-100">14:00 PKT (Telehealth)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Treatment Plan -->
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <div class="bg-white rounded-2xl clinical-shadow border border-slate-200 p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 flex items-center"><i class="fas fa-pills text-teal-600 mr-2"></i> Current Medications</h3>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-slate-800 text-lg" id="pat-view-meds">Medication Name</p>
+                                <p class="text-sm text-slate-500 mt-1">Refills remaining: 2</p>
+                            </div>
+                            <button onclick="showToast('Refill request sent to pharmacy.')" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm">
+                                Request Refill
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl clinical-shadow border border-slate-200 p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 flex items-center"><i class="fas fa-spa text-teal-600 mr-2"></i> Assigned Therapy Tasks</h3>
+                        <p class="text-sm text-slate-500 mb-4">Your provider has assigned the following exercises to support your treatment plan.</p>
+                        <div class="space-y-3" id="pat-view-exercises">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar Info -->
+                <div class="space-y-8">
+                    <div class="bg-white rounded-2xl clinical-shadow border border-slate-200 p-6 flex flex-col items-center text-center">
+                        <div class="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center text-teal-600 text-3xl mb-4 border border-teal-100">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-lg" id="pat-view-doc">Dr. Name</h3>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Attending Psychiatrist</p>
+                        
+                        <button onclick="showToast('Secure messaging module opening...')" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl text-sm font-bold transition shadow-md shadow-teal-600/20 mb-3 flex justify-center items-center gap-2">
+                            <i class="fas fa-comment-medical"></i> Secure Message
+                        </button>
+                        <button class="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-xl text-sm font-semibold transition shadow-sm">
+                            Reschedule Appointment
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-800 rounded-2xl p-6 text-white text-center">
+                        <i class="fas fa-file-invoice-dollar text-3xl text-slate-400 mb-3"></i>
+                        <h3 class="font-bold mb-1">Billing & Insurance</h3>
+                        <p class="text-xs text-slate-400 mb-4">View your statements and update insurance information.</p>
+                        <button class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-sm font-semibold transition">View Statements</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         VIEW 4: PHANTASM ADMIN (The Hidden Vault)
+    =========================================== -->
+    <div id="view-admin" class="view-layer h-full w-full admin-theme flex-col absolute inset-0 z-50 overflow-hidden">
+        
+        <!-- Cybernetic Background Elements -->
+        <div class="absolute inset-0 pointer-events-none opacity-20">
+            <div class="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-600/20 rounded-full blur-[100px]"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[100px]"></div>
+        </div>
+        
+        <header class="border-b border-sky-900/50 p-4 px-8 flex justify-between items-center bg-black/60 backdrop-blur-md z-10 shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 border border-sky-500 bg-sky-900/30 rounded flex items-center justify-center text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
+                    <i class="fas fa-ghost text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-white cyber-font tracking-widest uppercase">Phantasm-DB</h1>
+                    <p class="text-[10px] text-sky-400 code-font flex items-center gap-2">
+                        <span>AUTONOMOUS COGNITIVE DECEPTION ENGINE</span>
+                        <span class="w-1 h-1 bg-sky-400 rounded-full animate-pulse"></span>
+                        <span>V.4.0.0</span>
+                    </p>
+                </div>
+            </div>
+            <button onclick="closeAdmin()" class="text-slate-400 hover:text-white transition bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg text-xs font-bold border border-slate-700 flex items-center gap-2">
+                <i class="fas fa-power-off"></i> SUSPEND TERMINAL
+            </button>
+        </header>
+
+        <main class="flex-1 p-6 flex flex-col gap-6 overflow-hidden z-10">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+                
+                <!-- Left Column: Risk & Defense Toggles -->
+                <div class="flex flex-col gap-6">
+                    
+                    <!-- Threat Gauge -->
+                    <div class="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative transition-all duration-500" id="risk-panel">
+                        <div class="absolute top-4 left-4 text-[10px] text-slate-500 code-font tracking-widest">THREAT_LEVEL</div>
+                        <div class="absolute top-4 right-4 text-[10px] text-emerald-500 code-font" id="sys-status-text">SECURE</div>
+                        
+                        <div class="relative w-48 h-48 mt-4 flex items-center justify-center">
+                            <!-- SVG Gauge -->
+                            <svg class="w-full h-full transform -rotate-90 absolute inset-0">
+                                <circle cx="96" cy="96" r="88" stroke="rgba(255,255,255,0.05)" stroke-width="12" fill="none"></circle>
+                                <circle id="risk-svg" cx="96" cy="96" r="88" stroke="#10b981" stroke-width="12" fill="none" stroke-dasharray="553" stroke-dashoffset="553" class="transition-all duration-1000 ease-out"></circle>
+                            </svg>
+                            <div class="text-center z-10 flex flex-col items-center">
+                                <span id="risk-score" class="text-6xl font-black text-white cyber-font">0</span>
+                                <span class="text-[10px] text-slate-400 font-bold tracking-widest mt-1">ANOMALY SCORE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Countermeasures -->
+                    <div class="glass-panel rounded-2xl p-6 flex-1 flex flex-col">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-700/50 pb-2"><i class="fas fa-shield-virus text-sky-500 mr-2"></i> Defensive Systems</h3>
+                        
+                        <div class="space-y-4 flex-1">
+                            <div class="flex justify-between items-center bg-black/40 p-3 rounded border border-slate-800">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-300 code-font">Schema Routing</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5" id="route-status-sub">Currently serving Production</p>
+                                </div>
+                                <span class="px-2 py-1 bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded code-font" id="route-status-badge">PROD</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center bg-black/40 p-3 rounded border border-slate-800">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-300 code-font">Synthetic Generator</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">FakerProvider Status</p>
+                                </div>
+                                <span class="px-2 py-1 bg-slate-800 text-slate-500 border border-slate-700 text-[10px] font-bold rounded code-font" id="gen-status-badge">STANDBY</span>
+                            </div>
+
+                            <div class="flex justify-between items-center bg-black/40 p-3 rounded border border-slate-800">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-300 code-font">Latency Induction</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">pg_sleep() Throttling</p>
+                                </div>
+                                <span class="px-2 py-1 bg-slate-800 text-slate-500 border border-slate-700 text-[10px] font-bold rounded code-font" id="throttle-status-badge">OFF</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center">
+                            <span class="text-[10px] text-slate-400 code-font">Honeypot Data Fed:</span>
+                            <span class="text-sm text-sky-400 font-bold code-font" id="admin-fake-count">0 Bytes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Terminal & Ledger -->
+                <div class="lg:col-span-3 flex flex-col gap-6">
+                    
+                    <!-- Terminal -->
+                    <div class="glass-panel rounded-2xl flex flex-col overflow-hidden h-64 border-l-4 border-l-sky-500 transition-all duration-500 relative" id="terminal-panel">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+                        <div class="bg-black/60 px-4 py-3 border-b border-sky-900/50 flex justify-between items-center shrink-0">
+                            <span class="text-xs font-bold text-sky-500 code-font tracking-widest"><i class="fas fa-terminal mr-2"></i> Python Middleware Intercept Terminal</span>
+                            <span class="flex items-center gap-2 text-[10px] text-sky-400 code-font border border-sky-900 px-2 py-0.5 rounded bg-sky-900/20">
+                                <div class="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse shadow-[0_0_8px_#0ea5e9]"></div> LISTENING :5432
+                            </span>
+                        </div>
+                        <div id="sql-log" class="p-4 code-font text-xs space-y-2 overflow-y-auto flex-1 bg-[#010409]/80 text-slate-300">
+                            <div><span class="text-slate-600">[SYS]</span> Deep Packet Inspection active. Analyzing incoming SQL syntax...</div>
+                        </div>
+                    </div>
+
+                    <!-- Forensic Table -->
+                    <div class="glass-panel rounded-2xl overflow-hidden flex-1 flex flex-col border border-slate-700">
+                        <div class="bg-slate-900/80 px-6 py-4 border-b border-slate-700 flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 class="font-bold text-white text-sm tracking-wide"><i class="fas fa-vault mr-2 text-sky-500"></i> Relational_Forensic_Ledger</h3>
+                                <p class="text-[10px] text-slate-400 code-font mt-1">Immutable storage. Deletion prevented by DB triggers.</p>
+                            </div>
+                            <button class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 code-font">
+                                <i class="fas fa-download"></i> EXPORT CSV
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-black/40 p-2">
+                            <table class="w-full text-left text-xs code-font border-collapse">
+                                <thead class="text-slate-500 sticky top-0 bg-[#020617] uppercase tracking-wider z-10">
+                                    <tr>
+                                        <th class="px-4 py-3 border-b border-slate-800">Timestamp</th>
+                                        <th class="px-4 py-3 border-b border-slate-800">Source IP</th>
+                                        <th class="px-4 py-3 border-b border-slate-800">Intercepted Payload</th>
+                                        <th class="px-4 py-3 border-b border-slate-800">Routing Decision</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="forensic-body" class="divide-y divide-slate-800/50 text-slate-300">
+                                    <!-- Logs injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+    <!-- Javascript Logic -->
+    <script>
+        // --- 1. RELATIONAL DATA STRUCTURES ---
+        const doctors = [
+            { id: 'DOC-001', name: 'Dr. Fatima Rehman', spec: 'Clinical Psychiatry' },
+            { id: 'DOC-002', name: 'Dr. Arslan Tariq', spec: 'Cognitive Behavioral Therapy' },
+            { id: 'DOC-003', name: 'Dr. Sarah Jenkins', spec: 'Neuropsychiatry' }
+        ];
+
+        const realPatients = [
+            { 
+                id: 'PT-101', docId: 'DOC-001', name: 'Ali Kamran', 
+                diag: 'Generalized Anxiety Disorder (GAD) & Insomnia', 
+                status: 'Stable',
+                meds: 'Escitalopram (Lexapro) 10mg, Zolpidem 5mg',
+                symptoms: [
+                    { name: 'Interpersonal Insecurity', desc: 'Severe distress and feelings of isolation when loved ones/friends interact with others. Demonstrates anxious attachment.', sev: 'Severe' },
+                    { name: 'Chronic Pessimism', desc: 'Pervasive negative thinking patterns predicting worst-case scenarios constantly.', sev: 'High' },
+                    { name: 'Sleep-Onset Insomnia', desc: 'Averaging only 3-4 hours of sleep per night, leading to daytime fatigue.', sev: 'Severe' }
+                ],
+                exercises: [
+                    { name: 'Cognitive Restructuring & Journaling', desc: 'Maintain a Thought Record. Write down jealous triggers, negative spirals, and logical counter-thoughts.' },
+                    { name: 'Box Breathing (Pranayama)', desc: 'Inhale 4s, hold 4s, exhale 4s, hold 4s. Repeat for 5 minutes to regulate autonomic nervous system.' },
+                    { name: 'The 5-4-3-2-1 Grounding Technique', desc: 'Acknowledge 5 things you see, 4 you touch, 3 you hear, 2 you smell, 1 you taste. Use during acute panic.' }
+                ]
+            },
+            { 
+                id: 'PT-102', docId: 'DOC-001', name: 'Ayesha Khan', 
+                diag: 'Major Depressive Disorder', status: 'Pending Review',
+                meds: 'Sertraline 50mg',
+                symptoms: [ { name: 'Anhedonia', desc: 'Loss of interest in previously enjoyed activities.', sev: 'High' } ],
+                exercises: [ { name: 'Behavioral Activation', desc: 'Schedule one pleasant activity per day.' } ]
+            },
+            { 
+                id: 'PT-103', docId: 'DOC-002', name: 'Bilal Ahmed', 
+                diag: 'PTSD', status: 'Therapy Ongoing',
+                meds: 'Prazosin 1mg',
+                symptoms: [ { name: 'Hypervigilance', desc: 'Constantly on guard.', sev: 'High' } ],
+                exercises: [ { name: 'EMDR Prep', desc: 'Safe place visualization.' } ]
+            }
+        ];
+
+        // The Honeypot Data (150+ highly sensitive fake profiles)
+        const fakePatients = [];
+        const f_names = ["James Smith", "Maria Garcia", "Robert Johnson", "Linda Martinez", "Michael Brown", "Sarah Davis", "William Miller"];
+        const f_diag = ["Severe Paranoid Schizophrenia", "Bipolar I Disorder w/ Psychotic Features", "Antisocial Personality Disorder", "Borderline Personality Disorder", "Dissociative Identity Disorder"];
+        const f_meds = ["Clozapine 300mg", "Lithium 900mg", "Haloperidol 5mg", "Quetiapine 200mg", "None (Patient Refusal)"];
+        
+        for(let i=0; i<156; i++) {
+            fakePatients.push({
+                id: `PT-${Math.floor(10000 + Math.random()*89999)}`,
+                name: f_names[Math.floor(Math.random() * f_names.length)] + " " + Math.floor(Math.random()*100),
+                diag: f_diag[Math.floor(Math.random() * f_diag.length)],
+                status: Math.random() > 0.8 ? 'CRITICAL' : 'Hospitalized',
+                meds: f_meds[Math.floor(Math.random() * f_meds.length)],
+                symptoms: [
+                    { name: 'Violent Delusions', desc: 'Expresses intent to harm facility staff.', sev: 'Critical' },
+                    { name: 'Auditory Hallucinations', desc: 'Command hallucinations instructing self-harm.', sev: 'Severe' }
+                ],
+                exercises: [
+                    { name: 'In-Patient Restraint Protocol', desc: 'Requires 2-person escort at all times outside ward.' },
+                    { name: 'Chemical Sedation Eval', desc: 'Monitor for PRN administration.' }
+                ]
+            });
+        }
+
+        let isHoneypotActive = false;
+        let currentRole = 'doctor';
+        let currentPatientList = [];
+
+        // --- 2. FRONTEND UI LOGIC ---
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-900 text-white px-4 py-3 rounded-lg shadow-2xl border border-slate-700 text-sm font-semibold flex items-center gap-3 toast-enter';
+            toast.innerHTML = `<i class="fas fa-check-circle text-teal-400 text-lg"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3500);
+        }
+
+        function setLoginRole(role) {
+            currentRole = role;
+            document.getElementById('login-error').classList.add('hidden');
+            if (role === 'doctor') {
+                document.getElementById('tab-doc').className = 'flex-1 py-4 tab-active transition hover:text-teal-700 focus:outline-none';
+                document.getElementById('tab-pat').className = 'flex-1 py-4 tab-inactive transition hover:text-slate-800 focus:outline-none';
+                document.getElementById('doctor-fields').classList.remove('hidden');
+                document.getElementById('patient-fields').classList.add('hidden');
+                document.getElementById('login-doc-id').setAttribute('required', 'true');
+            } else {
+                document.getElementById('tab-pat').className = 'flex-1 py-4 tab-active transition hover:text-teal-700 focus:outline-none';
+                document.getElementById('tab-doc').className = 'flex-1 py-4 tab-inactive transition hover:text-slate-800 focus:outline-none';
+                document.getElementById('patient-fields').classList.remove('hidden');
+                document.getElementById('doctor-fields').classList.add('hidden');
+                document.getElementById('login-doc-id').removeAttribute('required');
+            }
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-layer').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function switchInnerTab(tabName) {
+            const tabs = ['overview', 'notes', 'rx'];
+            tabs.forEach(t => {
+                document.getElementById(`inner-content-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`inner-tab-${t}`);
+                btn.className = `px-4 py-2 text-sm font-semibold rounded-t-lg transition ${t === tabName ? 'inner-tab-active' : 'inner-tab-inactive'}`;
+            });
+            document.getElementById(`inner-content-${tabName}`).classList.remove('hidden');
+        }
+
+        function logout() {
+            isHoneypotActive = false;
+            document.getElementById('login-form').reset();
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('active-profile').classList.add('hidden');
+            document.getElementById('empty-profile').classList.remove('hidden');
+            switchView('view-login');
+        }
+
+        // --- 3. SECURITY ENGINE (Login & Trap) ---
+        function handleLogin(e) {
+            e.preventDefault();
+            document.getElementById('login-error').classList.add('hidden');
+            
+            const sqlInjectionRegex = /(OR 1=1|UNION|SELECT|--|DROP|;)/i;
+
+            if (currentRole === 'doctor') {
+                const docId = document.getElementById('login-doc-id').value;
+                const patIdQuery = document.getElementById('login-doc-pat-id').value; 
+
+                // THE TRAP: Attacker logs in with SQLi. We let them in to the Honeypot.
+                if (sqlInjectionRegex.test(docId) || sqlInjectionRegex.test(patIdQuery)) {
+                    activateHoneypot(docId + " | " + patIdQuery);
+                    currentPatientList = fakePatients;
+                    renderDoctorDashboard('DOC-001', currentPatientList); 
+                    switchView('view-doctor');
+                    return;
+                }
+
+                // Normal Login
+                const doctor = doctors.find(d => d.id === docId);
+                if (doctor) {
+                    addForensicLog(`Auth Attempt: ${docId}`, 'Access Granted', true);
+                    let myPatients = realPatients.filter(p => p.docId === doctor.id);
+                    if(patIdQuery) myPatients = myPatients.filter(p => p.id === patIdQuery.toUpperCase());
+                    
+                    currentPatientList = myPatients;
+                    renderDoctorDashboard(doctor.id, currentPatientList);
+                    switchView('view-doctor');
+                } else {
+                    document.getElementById('login-error').classList.remove('hidden');
+                }
+
+            } else {
+                // Patient Login
+                const patId = document.getElementById('login-pat-id').value;
+                const docName = document.getElementById('login-pat-doc').value;
+
+                if (sqlInjectionRegex.test(patId)) {
+                    activateHoneypot(patId);
+                    renderPatientDashboard(fakePatients[0]);
+                    switchView('view-patient');
+                    return;
+                }
+
+                const patient = realPatients.find(p => p.id === patId.toUpperCase());
+                if (patient) {
+                    const assignedDoc = doctors.find(d => d.id === patient.docId);
+                    if(assignedDoc && assignedDoc.name.includes(docName)) {
+                        addForensicLog(`Patient Portal Auth: ${patId}`, 'Access Granted', true);
+                        renderPatientDashboard(patient);
+                        switchView('view-patient');
+                        return;
+                    }
+                }
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        // --- 4. RENDER FUNCTIONS ---
+        function renderDoctorDashboard(docId, patientArray) {
+            const doc = doctors.find(d => d.id === docId) || {name: 'Admin', spec: 'System'};
+            document.getElementById('doc-nav-name').innerText = doc.name;
+            document.getElementById('doc-nav-spec').innerText = doc.spec;
+            document.getElementById('doc-pat-count').innerText = patientArray.length;
+
+            const list = document.getElementById('doc-patient-list');
+            list.innerHTML = '';
+            
+            if(patientArray.length === 0) {
+                list.innerHTML = `<div class="p-8 text-center text-slate-500 font-medium">No patients found.</div>`;
+                return;
+            }
+
+            patientArray.forEach((p, index) => {
+                const statusColor = p.status.includes('CRITICAL') ? 'text-red-600 bg-red-50 border-red-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                list.innerHTML += `
+                    <div onclick="selectPatient(${index})" class="p-4 border-b border-slate-200 hover:bg-teal-50 cursor-pointer transition flex justify-between items-center group">
+                        <div>
+                            <h4 class="font-bold text-slate-800 group-hover:text-teal-700 transition">${p.name}</h4>
+                            <p class="text-xs text-slate-500 font-mono mt-0.5">${p.id}</p>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded border ${statusColor}">${p.status}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function selectPatient(index) {
+            const p = currentPatientList[index];
+            document.getElementById('empty-profile').classList.add('hidden');
+            document.getElementById('active-profile').classList.remove('hidden');
+            switchInnerTab('overview'); // reset to first tab
+
+            document.getElementById('prof-name').innerText = p.name;
+            document.getElementById('prof-id').innerText = p.id;
+            document.getElementById('prof-diag').innerText = p.diag;
+            document.getElementById('prof-meds').innerText = p.meds;
+            
+            const statusEl = document.getElementById('prof-status');
+            statusEl.innerText = p.status;
+            statusEl.className = p.status.includes('CRITICAL') 
+                ? "px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded bg-red-100 text-red-700 border border-red-200" 
+                : "px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded bg-emerald-100 text-emerald-700 border border-emerald-200";
+
+            // Symptoms
+            const symList = document.getElementById('prof-symptoms');
+            symList.innerHTML = '';
+            p.symptoms.forEach(s => {
+                const badge = s.sev === 'Critical' ? 'bg-red-500 text-white' : (s.sev === 'Severe' ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-700');
+                symList.innerHTML += `
+                    <li class="p-4 bg-white flex flex-col hover:bg-slate-50 transition">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-slate-700">${s.name}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${badge}">${s.sev}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 leading-relaxed">${s.desc}</p>
+                    </li>
+                `;
+            });
+
+            // Exercises
+            const exList = document.getElementById('prof-exercises');
+            exList.innerHTML = '';
+            p.exercises.forEach(e => {
+                exList.innerHTML += `
+                    <div class="bg-slate-100 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+                        <i class="fas fa-clipboard-check text-teal-600 mt-1 text-lg"></i>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">${e.name}</h4>
+                            <p class="text-xs text-slate-600">${e.desc}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function generatePDF() {
+            showToast("Compiling LaTeX Clinical Report. Generating PDF secure link...");
+        }
+
+        function renderPatientDashboard(patient) {
+            const doc = doctors.find(d => d.id === patient.docId) || {name: 'Dr. Unknown'};
+            document.getElementById('pat-nav-name').innerText = patient.name;
+            document.getElementById('pat-nav-id').innerText = patient.id;
+            document.getElementById('pat-view-meds').innerText = patient.meds;
+            document.getElementById('pat-view-doc').innerText = doc.name;
+            
+            const exList = document.getElementById('pat-view-exercises');
+            exList.innerHTML = '';
+            patient.exercises.forEach(e => {
+                exList.innerHTML += `
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0"><i class="fas fa-spa"></i></div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">${e.name}</p>
+                            <p class="text-xs text-slate-500 mt-1">${e.desc}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- 5. ADMIN / FORENSICS LOGIC ---
+        function activateHoneypot(payload) {
+            isHoneypotActive = true;
+            addForensicLog(payload, 'ISOLATED TO SHADOW_VAULT', false);
+            
+            // UI Updates in Admin Panel
+            document.getElementById('sys-status-text').innerText = "CRITICAL THREAT";
+            document.getElementById('sys-status-text').className = "absolute top-4 right-4 text-[10px] text-red-500 font-bold code-font animate-pulse";
+            
+            const riskSvg = document.getElementById('risk-svg');
+            riskSvg.style.strokeDashoffset = "0"; // Fill ring
+            riskSvg.style.stroke = "#ef4444";
+            document.getElementById('risk-score').innerText = "100";
+            document.getElementById('risk-score').classList.replace('text-white', 'text-red-500');
+            document.getElementById('risk-panel').classList.add('danger-pulse');
+
+            document.getElementById('route-status-badge').innerText = "SHADOW_VAULT";
+            document.getElementById('route-status-badge').className = "px-2 py-1 bg-red-900/50 text-red-400 border border-red-500/50 text-[10px] font-bold rounded code-font animate-pulse";
+            document.getElementById('route-status-sub').innerText = "Redirected session transparently";
+            
+            document.getElementById('gen-status-badge').innerText = "ACTIVE";
+            document.getElementById('gen-status-badge').className = "px-2 py-1 bg-emerald-900/50 text-emerald-400 border border-emerald-500/50 text-[10px] font-bold rounded code-font";
+            
+            document.getElementById('throttle-status-badge').innerText = "2500ms DELAY";
+            document.getElementById('throttle-status-badge').className = "px-2 py-1 bg-orange-900/50 text-orange-400 border border-orange-500/50 text-[10px] font-bold rounded code-font";
+
+            document.getElementById('admin-fake-count').innerText = `${fakePatients.length} Rows Synced`;
+            
+            document.getElementById('terminal-panel').classList.replace('border-l-sky-500', 'border-l-red-500');
+            addSqlLog(`> [WARN] SQL INJECTION SIGNATURE MATCHED: /OR 1=1/`, true);
+            addSqlLog(`> [AUTO-RESPONSE] Executing: SET search_path TO shadow_vault, public;`, true);
+            addSqlLog(`> [SYNTHESIS] Triggering FakerProvider... Generated ${fakePatients.length} decoy profiles.`, true);
+        }
+
+        function addSqlLog(msg, isAlert = false) {
+            const terminal = document.getElementById('sql-log');
+            const time = new Date().toISOString().split('T')[1].slice(0,-1); 
+            const colorClass = isAlert ? 'text-red-400 font-bold' : 'text-sky-300';
+            const html = `<div class="mb-1 border-l-2 border-slate-700 pl-2"><span class="text-slate-600">[${time}]</span> <span class="${colorClass}">${msg}</span></div>`;
+            terminal.innerHTML += html;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function addForensicLog(payload, action, isSafe) {
+            const tbody = document.getElementById('forensic-body');
+            const time = new Date().toLocaleTimeString();
+            const rowColor = isSafe ? "" : "bg-red-950/20";
+            const payloadColor = isSafe ? "text-sky-300" : "text-red-400 font-bold";
+            const actionColor = isSafe ? "text-emerald-400" : "text-orange-400 font-bold";
+            
+            const tr = document.createElement('tr');
+            tr.className = `hover:bg-slate-800/50 transition border-b border-slate-800/50 ${rowColor} ${isSafe ? '' : 'border-l-2 border-l-red-500'}`;
+            tr.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap text-slate-500">${time}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sky-100">192.168.1.104 <span class="text-[9px] text-slate-600 border border-slate-700 px-1 rounded ml-1">REMOTE</span></td>
+                <td class="px-4 py-3 whitespace-nowrap ${payloadColor}">${payload}</td>
+                <td class="px-4 py-3 whitespace-nowrap ${actionColor}">${action}</td>
+            `;
+            tbody.prepend(tr);
+        }
+
+        // --- 6. KEYBOARD SHORTCUT HIDDEN TRIGGER (Ctrl + Shift + F) ---
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && (event.key === 'f' || event.key === 'F')) {
+                event.preventDefault(); 
+                document.body.classList.add('glitch-effect');
+                setTimeout(() => document.body.classList.remove('glitch-effect'), 300);
+                switchView('view-admin');
+            }
+        });
+
+        function closeAdmin() {
+            if (isHoneypotActive) {
+                switchView(currentRole === 'doctor' ? 'view-doctor' : 'view-patient');
+            } else {
+                switchView('view-login');
+            }
+        }
+
+        addForensicLog('SYSTEM_STARTUP', 'Production Schema Active', true);
+    </script>
+</body>
+</html>
