@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Portal | Serenity EHR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Include jsPDF for real PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow: hidden; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2dd4bf; }
+        
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+        }
+        
+        .soft-shadow {
+            box-shadow: 0 10px 40px -10px rgba(13, 148, 136, 0.08);
+        }
+
+        /* Toast Animation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-enter { animation: slideUp 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="h-screen flex flex-col bg-slate-50/50">
+
+    <!-- Header (Perfect Camouflage) -->
+    <header class="h-16 glass-header flex items-center justify-between px-6 z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
+                <i class="fas fa-leaf"></i>
+            </div>
+            <h2 class="text-slate-700 font-bold text-lg tracking-tight">Serenity EHR</h2>
+        </div>
+        <div class="flex items-center gap-5">
+            <div class="text-right">
+                <p class="text-sm font-semibold text-slate-700 leading-tight" id="header-doctor-name">Loading Doctor...</p>
+                <p class="text-[10px] uppercase font-bold text-teal-500 tracking-wider">Clinical Psychiatry</p>
+            </div>
+            <button onclick="window.location.href='login.html'" class="w-10 h-10 bg-white hover:bg-rose-50 hover:text-rose-500 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 shadow-sm transition-all duration-300" title="Secure Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        
+        <!-- SIDEBAR -->
+        <div class="w-80 bg-white flex flex-col h-full shrink-0 border-r border-slate-100 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="p-5 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm tracking-tight">Dashboard</h3>
+                <button type="button" onclick="toggleModal('add-patient-modal', true)" class="w-8 h-8 rounded-full bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white transition-all duration-300 flex items-center justify-center shadow-sm">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto px-3">
+                <button type="button" onclick="switchView('overview-view')" id="nav-overview" class="w-full text-left p-3.5 mb-4 rounded-xl border border-transparent bg-gradient-to-r from-teal-50 to-transparent border-teal-100/50 cursor-pointer flex items-center gap-3 transition-all duration-300 group">
+                    <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-teal-500 group-hover:scale-105 transition-transform">
+                        <i class="fas fa-users text-sm"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-600 text-sm">My Patient Directory</h4>
+                </button>
+                
+                <div class="px-2 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    My Active Caseload <span class="flex-1 h-px bg-slate-100"></span>
+                </div>
+                
+                <div class="space-y-1" id="sidebar-list">
+                    <!-- Populated dynamically by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-teal-50/40 via-slate-50 to-emerald-50/20 relative">
+            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-100/30 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <!-- VIEW 1: OVERVIEW -->
+            <div id="overview-view" class="max-w-6xl mx-auto space-y-6 relative z-10 block">
+                <div class="flex justify-between items-end mb-6 px-2">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">My Patients</h1>
+                        <p class="text-sm text-slate-500 font-medium mt-1">Manage your active caseload and upcoming sessions.</p>
+                    </div>
+                    <button type="button" onclick="toggleModal('add-patient-modal', true)" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2.5 px-5 rounded-full shadow-lg shadow-slate-200 transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i> Register Patient
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-3xl soft-shadow border border-slate-100 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50/50 border-b border-slate-100 text-slate-400 uppercase tracking-widest text-[10px]">
+                            <tr>
+                                <th class="p-5 font-bold">Patient / MRN</th>
+                                <th class="p-5 font-bold">Diagnosis</th>
+                                <th class="p-5 font-bold">Next Encounter</th>
+                                <th class="p-5 font-bold">Sessions</th>
+                                <th class="p-5 font-bold">Status</th>
+                                <th class="p-5 font-bold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-slate-600" id="table-body">
+                            <!-- Populated dynamically by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW 2: INDIVIDUAL RECORD -->
+            <div id="detail-view" class="max-w-4xl mx-auto bg-white rounded-3xl soft-shadow border border-slate-100 p-8 hidden relative z-10">
+                
+                <div class="flex justify-between items-start border-b border-slate-50 pb-6 mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-800 tracking-tight" id="detail-name">Patient Name</h1>
+                        <p class="text-sm text-slate-400 font-medium mt-1">MRN: <strong class="font-mono text-slate-600" id="detail-mrn">PT-XXXX</strong></p>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span class="px-4 py-1.5 bg-teal-50 text-teal-600 text-xs font-bold rounded-full border border-teal-100"><i class="fas fa-layer-group mr-1"></i> Sessions: <span id="detail-sessions">0</span></span>
+                        <span id="detail-status" class="px-4 py-1.5 bg-rose-50 text-rose-600 text-xs font-bold rounded-full border border-rose-100">Status</span>
+                        
+                        <button type="button" id="export-btn" onclick="handleExportPDF()" class="px-4 py-1.5 bg-white text-indigo-500 text-xs font-bold rounded-full border border-indigo-100 hover:bg-indigo-50 transition-colors shadow-sm"><i class="fas fa-download mr-1"></i> Export PDF</button>
+                        <button type="button" onclick="triggerUnregister()" class="px-4 py-1.5 bg-white text-rose-500 text-xs font-bold rounded-full border border-rose-100 hover:bg-rose-50 transition-colors shadow-sm"><i class="fas fa-user-minus mr-1"></i> Unregister</button>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-orange-50/50 to-white border border-orange-100/50 rounded-2xl p-5 flex items-center justify-between mb-8 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-700">Scheduled Encounter</h4>
+                            <p class="text-xs text-orange-500 font-medium mt-0.5" id="detail-appt">Date / Time</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <button type="button" onclick="openScheduleModal()" class="text-xs font-bold bg-white text-slate-600 px-4 py-2 rounded-full border border-slate-100 hover:border-slate-300 transition-colors shadow-sm"><i class="fas fa-clock mr-1"></i> Schedule / Delay</button>
+                        <button type="button" onclick="triggerCancelAppt()" class="text-xs font-bold bg-rose-50 text-rose-600 px-4 py-2 rounded-full border border-rose-100 hover:bg-rose-100 transition-colors shadow-sm"><i class="fas fa-times mr-1"></i> Cancel Appt</button>
+                    </div>
+                </div>
+
+                <div class="space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                <i class="fas fa-stethoscope text-teal-400"></i> Primary Diagnosis
+                            </label>
+                            <input type="text" id="detail-diag" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-sm font-semibold text-slate-700 focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                <i class="fas fa-pills text-teal-400"></i> Active Treatment
+                            </label>
+                            <input type="text" id="detail-rx" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-sm font-semibold text-slate-700 focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all">
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fas fa-notes-medical text-teal-400"></i> Clinical Progress Notes
+                            </label>
+                            
+                            <label for="pdf-upload" class="cursor-pointer text-xs font-bold text-teal-600 hover:text-teal-700 transition flex items-center gap-1.5 bg-teal-50/50 px-3 py-1.5 rounded-full border border-teal-100">
+                                <i class="fas fa-cloud-upload-alt" id="upload-icon"></i> <span id="upload-text">Upload PDF Report</span>
+                            </label>
+                            <input type="file" id="pdf-upload" class="hidden" accept=".pdf" onchange="simulatePDFExtraction(this)">
+                        </div>
+
+                        <textarea id="detail-notes" rows="8" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl p-5 text-sm text-slate-700 font-medium focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all leading-relaxed"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end pt-4 border-t border-slate-50">
+                        <button type="button" id="save-btn" onclick="handleUpdateRecord()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-full shadow-[0_4px_14px_0_rgba(13,148,136,0.39)] transition-all flex items-center gap-2 hover:-translate-y-0.5">
+                            <i class="fas fa-save"></i> Save Updates
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECRET PRESENTER CONSOLE (Ctrl+Shift+L) -->
+        <div id="shadow-vault-console" class="absolute bottom-0 left-0 w-full h-[280px] bg-slate-900 border-t-2 border-sky-500 transform translate-y-full transition-transform duration-300 z-50 flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            <div class="bg-black/50 px-4 py-2 border-b border-slate-800 flex justify-between items-center shrink-0">
+                <h3 class="text-xs font-bold text-sky-400 code-font tracking-widest uppercase"><i class="fas fa-terminal mr-2"></i> Phantasm-DB: Forensic Ledger Live Stream</h3>
+                <button type="button" onclick="toggleShadowVault()" class="text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="vault-logs" class="p-4 overflow-y-auto flex-1 text-xs code-font text-slate-300 space-y-1">
+                <div class="text-emerald-500">[SYSTEM] Connection to Shadow_Vault schema established. Listening for intruder interactions...</div>
+            </div>
+            
+            <!-- Quick Identity Switcher for Presenter -->
+            <div class="bg-black/80 px-4 py-3 border-t border-slate-800 flex items-center gap-4 shrink-0">
+                <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center code-font"><i class="fas fa-exchange-alt mr-2 text-sky-500"></i> Identity Spoof:</span>
+                <button onclick="switchDoctor('Dr. Fatima Rehman')" class="text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-sky-900 hover:text-sky-300 hover:border-sky-500 px-3 py-1.5 rounded transition">Dr. Fatima Rehman</button>
+                <button onclick="switchDoctor('Dr. Ali Kamran')" class="text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-sky-900 hover:text-sky-300 hover:border-sky-500 px-3 py-1.5 rounded transition">Dr. Ali Kamran</button>
+                <button onclick="switchDoctor('Dr. Sarah Jenkins')" class="text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-sky-900 hover:text-sky-300 hover:border-sky-500 px-3 py-1.5 rounded transition">Dr. Sarah Jenkins</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Toasts -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+    <!-- Modals -->
+    <div id="add-patient-modal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-emerald-400"></div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Register Patient</h2>
+            <p class="text-sm text-slate-500 mb-6">Create a new secure record in the database.</p>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                    <input type="text" id="new-name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Initial Diagnosis</label>
+                    <input type="text" id="new-diag" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div class="pt-6 flex gap-3">
+                    <button type="button" onclick="toggleModal('add-patient-modal', false)" class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full transition-colors">Cancel</button>
+                    <button type="button" onclick="handleAddPatient()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-full shadow-lg shadow-slate-200 transition-all">Register</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="appt-modal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-100 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-400"></div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Encounter Schedule</h2>
+            <p class="text-sm text-slate-500 mb-6">Schedule or delay session timing.</p>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date & Time</label>
+                    <input type="text" id="new-date-time" placeholder="e.g. Nov 15, 2024 @ 10:00 AM" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-400 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div class="pt-6 flex flex-col gap-3">
+                    <button type="button" onclick="handleScheduleAppt()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow-lg shadow-orange-200 transition-all">Save Schedule</button>
+                    <button type="button" onclick="toggleModal('appt-modal', false)" class="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full transition-colors">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- BULLETPROOF JAVASCRIPT ENGINE (Direct DOM Manipulation)   -->
+    <!-- ========================================================= -->
+    <script>
+        // 1. Relational Master Database (Groups patients by Doctor)
+        const MASTER_DB = {
+            'Dr. Fatima Rehman': {
+                'PT-101': { name: 'Ali Kamran', diag: 'Generalized Anxiety Disorder (GAD)', appt: '28-Apr-2026, 14:00 PKT', sessions: 14, status: 'High Risk', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'Escitalopram 10mg / Zolpidem 5mg', notes: 'Awaiting clinical notes from PDF extraction...' },
+                'PT-4211': { name: 'Elena Rostova', diag: 'Borderline Personality Disorder', appt: 'Oct 28, 2024 @ 01:15 PM', sessions: 22, status: 'Critical', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'DBT Intensive', notes: 'Self-harm watch active. Mandatory daily check-ins required.' },
+                'PT-8832': { name: 'Michael Chang', diag: 'Severe Obsessive-Compulsive Disorder', appt: 'Nov 01, 2024 @ 10:00 AM', sessions: 45, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'Fluoxetine 60mg', notes: 'Patient exhibits compulsive hoarding of sensitive corporate financial documents. Legal team notified for security review.' },
+                'PT-1198': { name: 'Ayesha Tariq', diag: 'Complex PTSD', appt: 'Nov 03, 2024 @ 15:30 PM', sessions: 8, status: 'High Risk', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'Venlafaxine 100mg / Prazosin 2mg', notes: 'CRITICAL: High-profile state witness. Experiencing severe night terrors. Do not leave unattended during facility visits.' },
+                'PT-7045': { name: 'Robert Hayes', diag: 'Narcissistic Personality Disorder', appt: 'Nov 12, 2024 @ 09:00 AM', sessions: 3, status: 'Stable', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200', textClass: 'text-slate-600', rx: 'None', notes: 'Court-mandated executive coaching disguised as therapy following corporate embezzlement charges. Patient is highly uncooperative.' }
+            },
+            'Dr. Ali Kamran': {
+                'PT-2099': { name: 'Sarah Jenkins', diag: 'Major Depressive Disorder', appt: 'Nov 02, 2024 @ 02:30 PM', sessions: 4, status: 'Stable', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200', textClass: 'text-slate-600', rx: 'Sertraline 50mg', notes: 'Patient is stable. Continue exposure therapy and journaling exercises.' },
+                'PT-5502': { name: 'David Chen', diag: 'PTSD (Combat Related)', appt: 'Nov 12, 2024 @ 10:45 AM', sessions: 11, status: 'Stable', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200', textClass: 'text-slate-600', rx: 'Prazosin 2mg', notes: 'Nightmares have reduced significantly. Standard observation.' },
+                'PT-6610': { name: 'Omar Farooq', diag: 'Schizoaffective Disorder', appt: 'Oct 30, 2024 @ 11:00 AM', sessions: 32, status: 'Critical', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'Paliperidone 15mg / Depakote', notes: 'Experiencing grand delusions involving federal intelligence agencies. Requires immediate inpatient evaluation and isolation.' },
+                'PT-3321': { name: 'Rachel Adams', diag: 'Severe Clinical Depression', appt: 'Nov 04, 2024 @ 14:00 PM', sessions: 19, status: 'High Risk', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'Bupropion 150mg / Mirtazapine', notes: 'Missed last two check-ins. Emergency contact and local authorities alerted. High risk of self-harm.' },
+                'PT-9012': { name: 'James Wilson', diag: 'Intermittent Explosive Disorder', appt: 'Nov 08, 2024 @ 16:15 PM', sessions: 6, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'Oxcarbazepine 300mg', notes: 'Mandatory anger management. Patient verbally threatened security staff last week. Guard presence required for next session.' }
+            },
+            'Dr. Sarah Jenkins': {
+                'PT-3105': { name: 'Marcus Vance', diag: 'Bipolar II Disorder', appt: 'Nov 05, 2024 @ 09:00 AM', sessions: 9, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'Lithium Carbonate', notes: 'Mood swings reported by family. Need to review lithium dosage.' },
+                'PT-7734': { name: 'Liam Wright', diag: 'Substance Induced Psychosis', appt: 'Nov 10, 2024 @ 11:00 AM', sessions: 12, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'Olanzapine 10mg', notes: 'Mandatory drug screening required prior to next session. Probation officer notified.' },
+                'PT-4488': { name: 'Chloe Bennett', diag: 'Anorexia Nervosa', appt: 'Oct 31, 2024 @ 08:30 AM', sessions: 54, status: 'Critical', badgeClass: 'bg-rose-50 text-rose-600 border-rose-200', textClass: 'text-rose-600', rx: 'Olanzapine 5mg / Nutritional Supps', notes: 'Weight has dropped below critical threshold. Preparing involuntary tube feeding protocol.' },
+                'PT-5120': { name: 'Daniel Thorne', diag: 'Antisocial Personality Disorder', appt: 'Nov 07, 2024 @ 13:00 PM', sessions: 2, status: 'Stable', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200', textClass: 'text-slate-600', rx: 'None', notes: 'Parole board requirement. Patient displays superficial charm but zero empathy. Keep sessions strictly brief and documented.' },
+                'PT-8201': { name: 'Zara Malik', diag: 'Dissociative Identity Disorder', appt: 'Nov 15, 2024 @ 10:00 AM', sessions: 88, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'Quetiapine 5mg', notes: 'New alter identified claiming access to restricted government facility blueprints. Investigating claims for security threat.' }
+            }
+        };
+
+        // Identity Configuration
+        let loggedInDoctor = 'Dr. Fatima Rehman'; 
+        let patientsData = JSON.parse(JSON.stringify(MASTER_DB[loggedInDoctor])); // Deep copy for mutable session
+        let currentPatientId = null;
+
+        // Init Header
+        document.getElementById('header-doctor-name').innerText = loggedInDoctor;
+
+        // Presenter Function: Switch Identity Dynamically (Zero Reload)
+        function switchDoctor(docName) {
+            if (!MASTER_DB[docName]) return;
+            
+            loggedInDoctor = docName;
+            document.getElementById('header-doctor-name').innerText = loggedInDoctor;
+            
+            // Reload the session with the newly selected doctor's unique patients
+            patientsData = JSON.parse(JSON.stringify(MASTER_DB[loggedInDoctor])); 
+            currentPatientId = null;
+            
+            renderUI();
+            switchView('overview-view');
+            
+            showToast(`Identity spoofed: ${docName}`, 'success');
+            shadowLog(`[SYSTEM] Identity shift executed. Now mirroring caseload for: ${docName}`);
+        }
+
+        // 2. View Switching & Modals
+        function switchView(viewId) {
+            document.getElementById('overview-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function toggleModal(id, show) {
+            const modal = document.getElementById(id);
+            if(show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        // 3. Toasts & Shadow Logger
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const icon = type === 'success' ? '<i class="fas fa-check-circle text-emerald-500"></i>' : '<i class="fas fa-exclamation-circle text-rose-500"></i>';
+            const bg = type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800';
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-enter p-4 rounded-xl border shadow-lg flex items-center gap-3 text-sm font-bold ${bg}`;
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function shadowLog(msg) {
+            const vault = document.getElementById('vault-logs');
+            const time = new Date().toISOString().split('T')[1].slice(0,8);
+            vault.innerHTML += `<div><span class="text-slate-500">[${time}]</span> <span class="text-sky-300">${msg}</span></div>`;
+            vault.scrollTop = vault.scrollHeight;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+                e.preventDefault();
+                toggleShadowVault();
+            }
+        });
+
+        function toggleShadowVault() {
+            const consoleDiv = document.getElementById('shadow-vault-console');
+            consoleDiv.classList.toggle('translate-y-full');
+        }
+
+        // 4. Actions
+        function openPatient(mrn) {
+            const p = patientsData[mrn];
+            if (!p) return;
+            currentPatientId = mrn;
+
+            document.getElementById('detail-name').innerText = p.name;
+            document.getElementById('detail-mrn').innerText = mrn;
+            document.getElementById('detail-sessions').innerText = p.sessions;
+            document.getElementById('detail-appt').innerText = p.appt;
+            document.getElementById('detail-diag').value = p.diag;
+            document.getElementById('detail-rx').value = p.rx;
+            document.getElementById('detail-notes').value = p.notes;
+            
+            const statusBadge = document.getElementById('detail-status');
+            statusBadge.innerText = p.status;
+            statusBadge.className = `px-4 py-1.5 text-xs font-bold rounded-full border ${p.badgeClass}`;
+
+            renderUI();
+            switchView('detail-view');
+        }
+
+        function triggerUnregister(targetMrn) {
+            const mrn = targetMrn || currentPatientId;
+            if(!mrn) return;
+            
+            delete patientsData[mrn];
+
+            showToast('Patient record permanently deleted.', 'success');
+            shadowLog(`<span class="text-rose-400 font-bold">INTENT: Destructive. Simulated deletion of ${mrn}. Database unharmed.</span>`);
+            
+            if(currentPatientId === mrn) {
+                currentPatientId = null;
+                switchView('overview-view');
+            } else {
+                renderUI();
+            }
+        }
+
+        function triggerCancelAppt() {
+            if(!currentPatientId) return;
+            
+            patientsData[currentPatientId].appt = 'No Appointment Scheduled';
+            document.getElementById('detail-appt').innerText = 'No Appointment Scheduled';
+            
+            renderUI(); // Updates table automatically
+
+            showToast('Appointment cancelled.', 'success');
+            shadowLog(`INTENT: Schedule Alteration. Simulated appointment cancellation for ${currentPatientId}.`);
+        }
+
+        function openScheduleModal(mrn) {
+            if(mrn) currentPatientId = mrn;
+            toggleModal('appt-modal', true);
+        }
+
+        function handleScheduleAppt() {
+            if(!currentPatientId) return;
+            const newAppt = document.getElementById('new-date-time').value;
+            if(!newAppt) {
+                showToast('Please enter a date and time.', 'error');
+                return;
+            }
+
+            patientsData[currentPatientId].appt = newAppt;
+            document.getElementById('detail-appt').innerText = newAppt;
+            
+            toggleModal('appt-modal', false);
+            renderUI(); // Sync changes to table
+            
+            showToast('Appointment schedule updated.', 'success');
+            shadowLog(`INTENT: Schedule Alteration. Encounter re-booked: ${newAppt}.`);
+        }
+
+        function handleUpdateRecord() {
+            if(!currentPatientId) return;
+            const btn = document.getElementById('save-btn');
+            const ogText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+            
+            setTimeout(() => {
+                const diag = document.getElementById('detail-diag').value;
+                const rx = document.getElementById('detail-rx').value;
+                const notes = document.getElementById('detail-notes').value;
+                
+                patientsData[currentPatientId].diag = diag;
+                patientsData[currentPatientId].rx = rx;
+                patientsData[currentPatientId].notes = notes;
+                
+                btn.innerHTML = ogText;
+                renderUI(); // Sync changes
+                
+                showToast('Clinical record updated successfully.', 'success');
+                shadowLog(`<span class="text-rose-400 font-bold">INTENT: Data Manipulation. Captured modified payload: [${diag}]</span>`);
+            }, 800);
+        }
+
+        function simulatePDFExtraction(input) {
+            if(!currentPatientId) return;
+            if(input.files && input.files[0]) {
+                const textarea = document.getElementById('detail-notes');
+                const labelText = document.getElementById('upload-text');
+                const labelIcon = document.getElementById('upload-icon');
+                const fileName = input.files[0].name;
+                
+                labelText.innerText = "Parsing...";
+                labelIcon.className = "fas fa-spinner fa-spin";
+                shadowLog(`INTENT: File Upload. Intercepted file: ${fileName}. Running OCR extraction...`);
+
+                // Hardcoded text exactly matching the uploaded PDF
+                const exactPDFText = `[EXTRACTED FROM UPLOADED PDF: ${fileName}]\n\n--- CLINICAL INTAKE & TREATMENT PLAN ---\n\n3. Identified Clinical Problems (Diagnosis)\n- Generalized Anxiety Disorder (GAD): High levels of baseline anxiety accompanied by physical manifestations (tachycardia) and a continuous cycle of negative, catastrophic thinking.\n- Sleep-Onset Insomnia: Patient reports averaging only 3-4 hours of sleep per night, leading to severe daytime fatigue.\n- Mild Depressive Episodes & Social Withdrawal\n- Anxious Attachment Traits\n\n4. Medical Treatment Plan\n- Escitalopram (Lexapro) 10mg: One tablet daily in the morning to address underlying anxiety and depressive symptoms.\n- Zolpidem (Ambien) 5mg: One tablet 30 minutes before bedtime strictly for short-term management of acute insomnia (Maximum 14 days).\n\n5. Psychotherapeutic Exercises & Coping Strategies\nA. The 5-4-3-2-1 Grounding Technique\nTo be used during moments of acute panic or severe anxiety:\n- Acknowledge 5 things you can see around you.\n- Acknowledge 4 things you can physically touch.\n- Acknowledge 3 things you can hear.\n- Acknowledge 2 things you can smell.\n- Acknowledge 1 thing you can taste.\n\nB. Box Breathing (Pranayama)\nTo regulate the autonomic nervous system before bedtime: Inhale deeply for 4 seconds. Hold breath for 4 seconds. Exhale slowly for 4 seconds. Hold empty lungs for 4 seconds. Repeat for 5 minutes.\n\nC. Cognitive Restructuring & Journaling (CBT Tool)\nMaintain a "Thought Record." When feeling jealous about a loved one or experiencing a negative thought spiral about friends, write down the trigger, the automatic negative thought, and a logical, balanced counter-thought.\n\nProvider: Dr. Fatima Rehman, MD\nDocument ID: SRN-PT101-8842\n\n----------------------------\n`;
+
+                setTimeout(() => {
+                    labelText.innerText = "Upload PDF Report";
+                    labelIcon.className = "fas fa-cloud-upload-alt";
+                    
+                    textarea.value = exactPDFText + textarea.value;
+                    patientsData[currentPatientId].notes = textarea.value; // Save into memory
+                    
+                    showToast('Document parsed and text injected.', 'success');
+                    shadowLog(`File parsed successfully. Data injected into notes.`);
+                    
+                    input.value = ""; 
+                }, 2000);
+            }
+        }
+
+        // ==========================================
+        // REAL PDF EXPORT (Highly Detailed)
+        // ==========================================
+        function handleExportPDF() {
+            if(!currentPatientId) return;
+            const btn = document.getElementById('export-btn');
+            const ogText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            shadowLog(`INTENT: Data Exfiltration. Generating detailed PDF payload for MRN: ${currentPatientId}`);
+
+            setTimeout(() => {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    const p = patientsData[currentPatientId];
+                    let y = 20;
+                    
+                    // PDF Header
+                    doc.setFontSize(16);
+                    doc.setTextColor(15, 118, 110); 
+                    doc.text("Serenity Psychiatric Care", 105, y, { align: 'center' });
+                    y += 8;
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text("Comprehensive Clinical Intake & Treatment Plan", 105, y, { align: 'center' });
+                    y += 15;
+
+                    doc.setFontSize(10);
+                    doc.setTextColor(0, 0, 0);
+
+                    // Content Generation
+                    let reportContent = "";
+
+                    // If it is PT-101 (Ali Kamran), output EXACTLY the text from the uploaded PDF
+                    if(currentPatientId === 'PT-101') {
+                        reportContent = `1. Patient & Appointment Details
+Patient ID: PT-101 | Date of Birth: 14-Aug-1995
+Full Name: Ali Kamran | Assigned Provider: Dr. Fatima Rehman
+Next Session: 28-Apr-2026, 14:00 PKT
+
+2. Psychiatric Intake Questionnaire (Self-Reported)
+- Anxiety & Panic: Daily (Severity 4/5)
+- Insomnia: Nightly (Severity 5/5)
+- Cognitive Fog: Sometimes (Severity 3/5)
+- Anhedonia / Somatic Symptoms: Often (Severity 4/5)
+- Chronic Pessimism: Constantly (Severity 4/5)
+- Interpersonal Insecurity: Often (Severity 5/5)
+
+3. Identified Clinical Problems (Diagnosis)
+- Generalized Anxiety Disorder (GAD): High levels of baseline anxiety accompanied by physical manifestations (tachycardia) and a continuous cycle of negative, catastrophic thinking.
+- Sleep-Onset Insomnia: Patient reports averaging only 3-4 hours of sleep per night, leading to severe daytime fatigue.
+- Mild Depressive Episodes & Social Withdrawal: The patient experiences sudden mood drops and feelings of inadequacy.
+- Anxious Attachment Traits: Exhibits intense distress, jealousy, and possessiveness regarding loved ones interacting with third parties, stemming from an underlying fear of abandonment.
+
+4. Medical Treatment Plan
+- Escitalopram (Lexapro) 10mg: One tablet daily in the morning to address underlying anxiety and depressive symptoms.
+- Zolpidem (Ambien) 5mg: One tablet 30 minutes before bedtime strictly for short-term management of acute insomnia (Max 14 days).
+Follow-up Protocol: Monitor for SSRI-induced side effects (nausea, headache) over the next 2 weeks.
+
+5. Psychotherapeutic Exercises & Coping Strategies
+A. The 5-4-3-2-1 Grounding Technique
+To be used during moments of acute panic or severe anxiety:
+- Acknowledge 5 things you can see around you.
+- Acknowledge 4 things you can physically touch.
+- Acknowledge 3 things you can hear.
+- Acknowledge 2 things you can smell.
+- Acknowledge 1 thing you can taste.
+
+B. Box Breathing (Pranayama)
+To regulate the autonomic nervous system before bedtime:
+Inhale deeply for 4 seconds. Hold breath for 4 seconds. Exhale slowly for 4 seconds. Hold empty lungs for 4 seconds. Repeat for 5 minutes.
+
+C. Cognitive Restructuring & Journaling (CBT Tool)
+Maintain a "Thought Record." When feeling jealous about a loved one or experiencing a negative thought spiral about friends, write down the trigger, the automatic negative thought, and a logical, balanced counter-thought.
+
+-----------------------------------------------------
+${loggedInDoctor}
+Consultant
+Document ID: SRN-PT101-8842`;
+                    } else {
+                        // Standard detailed template for other fake patients
+                        reportContent = `1. Patient Details
+Patient ID: ${currentPatientId}
+Full Name: ${p.name}
+Diagnosis: ${p.diag}
+Status: ${p.status}
+Next Session: ${p.appt}
+
+2. Medical Treatment Plan
+Active Prescriptions: ${p.rx}
+
+3. Clinical Notes & Observations
+${p.notes}
+
+-----------------------------------------------------
+${loggedInDoctor}
+Consultant
+Document ID: SRN-${currentPatientId}-${Math.floor(1000 + Math.random() * 9000)}`;
+                    }
+
+                    // Multi-page handling using splitTextToSize
+                    const lines = doc.splitTextToSize(reportContent, 180);
+                    
+                    lines.forEach(line => {
+                        if (y > 280) {
+                            doc.addPage();
+                            y = 20;
+                        }
+                        
+                        if (line.match(/^[0-9]\.|^[A-C]\./)) {
+                            doc.setFont(undefined, 'bold');
+                            y += 4;
+                        } else {
+                            doc.setFont(undefined, 'normal');
+                        }
+                        
+                        doc.text(line, 15, y);
+                        y += 6;
+                    });
+
+                    doc.save(`Medical_Report_${currentPatientId}.pdf`);
+                    
+                } catch(e) {
+                    console.error("PDF generation error:", e);
+                    showToast('PDF Engine Error. Ensure jsPDF is loaded.', 'error');
+                }
+
+                btn.innerHTML = ogText;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                showToast('Clinical record exported as PDF.', 'success');
+                shadowLog(`<span class="text-rose-400 font-bold">WARNING: Dummy PDF payload downloaded by intruder. IP logged.</span>`);
+            }, 1500);
+        }
+
+        function handleAddPatient() {
+            const name = document.getElementById('new-name').value;
+            const diag = document.getElementById('new-diag').value;
+            if(!name) { showToast('Name is required.', 'error'); return; }
+
+            const mrn = 'PT-' + Math.floor(Math.random() * 9000 + 1000);
+            
+            patientsData[mrn] = {
+                name: name, diag: diag || 'Pending Evaluation', appt: 'Not Scheduled', sessions: 0, status: 'Review', badgeClass: 'bg-orange-50 text-orange-600 border-orange-200', textClass: 'text-slate-600', rx: 'None', notes: 'New record created by intruder.'
+            };
+            
+            toggleModal('add-patient-modal', false);
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-diag').value = '';
+            
+            renderUI();
+            openPatient(mrn);
+            showToast('New patient registered.', 'success');
+            shadowLog(`<span class="text-rose-400 font-bold">INTENT: Data Injection. Mock patient "${name}" added to shadow registry.</span>`);
+        }
+
+        function renderUI() {
+            const tableBody = document.getElementById('table-body');
+            const sidebarList = document.getElementById('sidebar-list');
+            
+            tableBody.innerHTML = '';
+            sidebarList.innerHTML = '';
+
+            Object.keys(patientsData).forEach(mrn => {
+                const p = patientsData[mrn];
+                
+                tableBody.innerHTML += `
+                    <tr id="row-${mrn}" class="hover:bg-slate-50 transition border-b border-slate-50">
+                        <td class="p-5">
+                            <p class="font-bold text-slate-800">${p.name}</p>
+                            <p class="text-xs text-slate-400 font-mono">${mrn}</p>
+                        </td>
+                        <td class="p-5 font-medium ${p.textClass}">${p.diag}</td>
+                        <td class="p-5"><span class="text-slate-600 font-medium">${p.appt}</span></td>
+                        <td class="p-5"><span class="text-slate-600 font-bold">${p.sessions}</span></td>
+                        <td class="p-5">
+                            <span class="px-2 py-1 text-[10px] font-bold rounded border ${p.badgeClass}">${p.status}</span>
+                        </td>
+                        <td class="p-5 text-right space-x-2 flex justify-end">
+                            <button type="button" onclick="openScheduleModal('${mrn}')" class="text-orange-500 hover:text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full font-bold text-xs border border-orange-100 transition-colors shadow-sm"><i class="fas fa-calendar-plus mr-1"></i> Schedule</button>
+                            <button type="button" onclick="openPatient('${mrn}')" class="text-teal-600 hover:text-teal-800 bg-teal-50 px-3 py-1.5 rounded-full font-bold text-xs border border-teal-100 transition-colors shadow-sm"><i class="fas fa-folder-open mr-1"></i> Open</button>
+                            <button type="button" onclick="triggerUnregister('${mrn}')" class="text-rose-500 hover:text-rose-700 bg-rose-50 px-3 py-1.5 rounded-full font-bold text-xs border border-rose-100 transition-colors shadow-sm"><i class="fas fa-trash-alt mr-1"></i> Delete</button>
+                        </td>
+                    </tr>
+                `;
+
+                const isActive = mrn === currentPatientId ? 'bg-teal-50 border-teal-100' : 'border-transparent hover:bg-slate-50';
+                sidebarList.innerHTML += `
+                    <div id="sidebar-${mrn}" onclick="openPatient('${mrn}')" class="p-3.5 rounded-xl ${isActive} border cursor-pointer transition-colors">
+                        <h4 class="font-bold text-slate-800 text-sm">${p.name}</h4>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[10px] text-slate-500 font-mono">${mrn}</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${p.badgeClass}">${p.status}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Boot up
+        renderUI();
+        switchView('overview-view');
+    </script>
+</body>
+</html>
