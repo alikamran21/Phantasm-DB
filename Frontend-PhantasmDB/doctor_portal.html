@@ -6,8 +6,21 @@
     <title>Provider Portal | Serenity EHR</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-base: #020617; /* Slate 950 */
+            --bg-panel: #0f172a; /* Slate 900 */
+            --border-color: #1e293b; /* Slate 800 */
+            --accent-blue: #0ea5e9; /* Sky 500 */
+        }
+
         body { font-family: 'Inter', sans-serif; overflow: hidden; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -147,6 +160,11 @@
                         <span class="px-4 py-1.5 bg-indigo-50 text-indigo-500 text-xs font-bold rounded-full border border-indigo-100"><i class="fas fa-layer-group mr-1"></i> Sessions: Awaiting Sync</span>
                         <span class="px-4 py-1.5 bg-slate-50 text-slate-500 text-xs font-bold rounded-full border border-slate-100">Status: Awaiting Sync</span>
                         
+                        <!-- PDF EXPORT BUTTON -->
+                        <button type="button" onclick="generatePatientReport()" id="export-patient-btn" class="px-4 py-1.5 bg-white text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-50 transition-colors shadow-sm">
+                            <i id="export-patient-icon" class="fas fa-file-pdf mr-1"></i> <span id="export-patient-text">Export PDF</span>
+                        </button>
+
                         <!-- Backend Optimized Delete Form -->
                         <form action="/api/patient/delete" method="POST" class="inline">
                             <input type="hidden" name="patient_mrn" value="DYNAMIC_ID">
@@ -305,6 +323,88 @@
                 navOverview.classList.remove('bg-gradient-to-r', 'from-teal-50', 'border-teal-100/50');
                 navOverview.classList.add('bg-transparent', 'border-transparent');
             }
+        }
+
+        // --- PDF Generation Logic ---
+        function generatePatientReport() {
+            const btnText = document.getElementById('export-patient-text');
+            const btnIcon = document.getElementById('export-patient-icon');
+            const originalText = btnText.innerText;
+
+            btnText.innerText = "Compiling...";
+            btnIcon.className = "fas fa-circle-notch fa-spin mr-1";
+
+            setTimeout(() => {
+                try {
+                    window.jsPDF = window.jspdf.jsPDF;
+                    const doc = new jsPDF();
+
+                    // Get values from the UI form elements
+                    const diagInput = document.querySelector('input[name="diagnosis"]').value || "Awaiting Data";
+                    const rxInput = document.querySelector('input[name="treatment"]').value || "Awaiting Data";
+                    const notesInput = document.querySelector('textarea[name="clinical_notes"]').value || "No clinical notes provided.";
+
+                    // Header
+                    doc.setFontSize(20);
+                    doc.setTextColor(15, 118, 110); // Teal 700
+                    doc.text("Serenity Psychiatric Care", 105, 20, { align: 'center' });
+
+                    doc.setFontSize(14);
+                    doc.setTextColor(51, 65, 85); // Slate 700
+                    doc.text("Clinical Patient Report", 105, 30, { align: 'center' });
+
+                    // Metadata
+                    doc.setFontSize(11);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text("Date Generated: " + new Date().toLocaleString(), 15, 45);
+
+                    // Diagnosis
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Primary Diagnosis:", 15, 60);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(diagInput, 15, 67);
+
+                    // Treatment
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Active Treatment / Prescriptions:", 15, 80);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(rxInput, 15, 87);
+
+                    // Clinical Notes
+                    doc.setFont(undefined, 'bold');
+                    doc.text("Clinical Progress Notes:", 15, 100);
+                    doc.setFont(undefined, 'normal');
+
+                    // Split long notes so they don't overflow the page
+                    const splitNotes = doc.splitTextToSize(notesInput, 180);
+                    doc.text(splitNotes, 15, 107);
+
+                    // Footer
+                    doc.setFontSize(9);
+                    doc.setTextColor(148, 163, 184); // Slate 400
+                    doc.text("CONFIDENTIAL MEDICAL RECORD - DO NOT DISTRIBUTE", 105, 280, { align: 'center' });
+
+                    // Create Download Link
+                    const pdfBlob = doc.output('blob');
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = pdfUrl;
+                    a.download = `Patient_Medical_Report_${new Date().getTime()}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(pdfUrl);
+
+                    alert("Patient report generated successfully.");
+                } catch(e) {
+                    console.error("PDF Engine Error:", e);
+                    alert("Error compiling PDF. Check browser console.");
+                } finally {
+                    btnText.innerText = originalText;
+                    btnIcon.className = "fas fa-file-pdf mr-1";
+                }
+            }, 800);
         }
     </script>
 </body>
