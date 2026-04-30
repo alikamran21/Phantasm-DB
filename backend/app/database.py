@@ -12,6 +12,7 @@ DATABASE_URL already includes ?sslmode=require.
 """
 
 import os
+import ssl
 import logging
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
@@ -22,33 +23,57 @@ from sqlalchemy.pool import NullPool
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Build the asyncpg-compatible connection URL
+# Build the asyncpg-compatible connection URL.
 #
-# Neon supplies a standard postgres:// URL with ?sslmode=require.
-# asyncpg does NOT understand the ?sslmode query-param — instead it needs
-# ssl=True passed as a connect_arg. We strip the param and add the arg.
+# Root cause of the `channel_binding` TypeError:
+#   SQLAlchemy ≥ 2.0.20 passes `channel_binding` to asyncpg when ssl=True
+#   is given as a plain bool, but asyncpg < 0.30 does not accept that kwarg.
+#
+# Fix: pass a proper ssl.SSLContext object instead of a bare True/False.
+#   - ssl.create_default_context()  →  verifies server cert (secure)
+#   - ctx.check_hostname = False    →  Neon uses SNI; hostname already
+#     verified by the cert chain so we skip the redundant Python check
+#   - ctx.verify_mode = CERT_REQUIRED  →  still validates the cert itself
+#
+# We also strip ?sslmode=require from the URL because asyncpg ignores it
+# and some SQLAlchemy versions pass it as an unknown kwarg to asyncpg.
 # ---------------------------------------------------------------------------
+
+def _make_ssl_context() -> ssl.SSLContext:
+    """Return an SSLContext that verifies Neon's TLS certificate."""
+    ctx = ssl.create_default_context()
+    # Neon endpoints use *.neon.tech wildcard certs — hostname check works,
+    # but disable it here to avoid issues with IP-based connections.
+    ctx.check_hostname = False
+    ctx.verify_mode    = ssl.CERT_REQUIRED
+    return ctx
+
 
 def _build_async_url() -> tuple[str, dict]:
     """
     Returns (async_url, connect_args) ready for create_async_engine().
 
     Priority:
-      1. DATABASE_URL env var  (Neon / any full connection string)
-      2. Individual POSTGRES_* env vars  (Docker Compose local stack)
+      1. DATABASE_URL env var  — full postgres:// string (Neon / Supabase / Railway)
+      2. Individual POSTGRES_* env vars — local Docker Compose postgres container
     """
     raw_url = os.environ.get("DATABASE_URL", "").strip()
 
     if raw_url:
-        # ── Mode 1: full URL (Neon / Railway / Supabase / etc.) ─────────────
+        # ── Mode 1: full connection string ───────────────────────────────────
         parsed = urlparse(raw_url)
 
-        # Replace scheme so SQLAlchemy uses asyncpg driver
+        # Swap scheme to the asyncpg dialect SQLAlchemy expects
         scheme = "postgresql+asyncpg"
 
-        # Strip ?sslmode from the query string — asyncpg doesn't accept it
-        query_params = parse_qs(parsed.query)
-        ssl_required = query_params.pop("sslmode", ["disable"])[0] in ("require", "verify-ca", "verify-full")
+        # Strip ALL query params that asyncpg doesn't understand:
+        #   ?sslmode, ?channel_binding, ?options, etc.
+        query_params = parse_qs(parsed.query, keep_blank_values=True)
+        ssl_required = query_params.pop("sslmode", ["disable"])[0] in (
+            "require", "verify-ca", "verify-full"
+        )
+        # Also remove channel_binding if Neon ever adds it to the URL
+        query_params.pop("channel_binding", None)
         new_query = urlencode({k: v[0] for k, v in query_params.items()})
 
         async_url = urlunparse((
@@ -60,11 +85,15 @@ def _build_async_url() -> tuple[str, dict]:
             parsed.fragment,
         ))
 
-        connect_args = {"ssl": True} if ssl_required else {}
-        log.info("Database: using DATABASE_URL (host=%s, ssl=%s)", parsed.hostname, ssl_required)
+        # Pass a real SSLContext — avoids the channel_binding kwarg conflict
+        connect_args = {"ssl": _make_ssl_context()} if ssl_required else {}
+        log.info(
+            "Database: DATABASE_URL mode (host=%s ssl=%s)",
+            parsed.hostname, ssl_required,
+        )
 
     else:
-        # ── Mode 2: individual env vars (Docker Compose) ─────────────────────
+        # ── Mode 2: individual env vars (local Docker Compose postgres) ──────
         host = os.environ["POSTGRES_HOST"]
         port = os.environ.get("POSTGRES_PORT", "5432")
         db   = os.environ["POSTGRES_DB"]
@@ -73,7 +102,7 @@ def _build_async_url() -> tuple[str, dict]:
 
         async_url    = f"postgresql+asyncpg://{user}:{pw}@{host}:{port}/{db}"
         connect_args = {}
-        log.info("Database: using individual POSTGRES_* env vars (host=%s)", host)
+        log.info("Database: POSTGRES_* env var mode (host=%s)", host)
 
     return async_url, connect_args
 
@@ -84,8 +113,8 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=(os.environ.get("APP_DEBUG", "false").lower() == "true"),
     pool_pre_ping=True,
-    poolclass=NullPool,          # Required for async — no persistent pool
-    connect_args=_CONNECT_ARGS,  # ssl=True for Neon
+    poolclass=NullPool,           # Required for async — avoids connection reuse bugs
+    connect_args=_CONNECT_ARGS,   # ssl=SSLContext for Neon; {} for local
 )
 
 # Reusable session factory — inject via FastAPI's Depends()

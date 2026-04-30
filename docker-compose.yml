@@ -1,100 +1,28 @@
 # docker-compose.yml
 # ============================================================
-# Phantasm-DB — Docker Compose production stack
+# Phantasm-DB — Docker Compose stack (Neon PostgreSQL edition)
 #
-# Services:
-#   db        — PostgreSQL 16 (persistent volume)
-#   backend   — FastAPI / Uvicorn (Python 3.12)
-#   frontend  — Nginx (static files + reverse proxy)
-#
-# Startup order: db → backend → frontend
+# The local PostgreSQL (db) service has been removed.
+# DATABASE_URL in .env points directly to Neon.
 #
 # Usage:
-#   cp .env .env           # edit placeholder values first
-#   docker compose up -d   # build and start all services
-#   docker compose logs -f # tail all logs
-#   docker compose down    # stop and remove containers
-#
-# To rebuild after code changes:
-#   docker compose build --no-cache backend
-#   docker compose up -d --force-recreate backend
+#   docker compose up --build        # first run
+#   docker compose up -d             # background mode
+#   docker compose logs -f           # tail all logs
+#   docker compose down              # stop containers
+#   docker compose build --no-cache backend  # force rebuild
 # ============================================================
 
 version: "3.9"
 
-# ---------------------------------------------------------------------------
-# Named volumes — data survives container restarts
-# ---------------------------------------------------------------------------
-volumes:
-  postgres_data:
-    driver: local
-
-# ---------------------------------------------------------------------------
-# Isolated network — containers communicate by service name
-# ---------------------------------------------------------------------------
 networks:
   phantasm_net:
     driver: bridge
 
-# ---------------------------------------------------------------------------
-# Services
-# ---------------------------------------------------------------------------
 services:
 
   # ==========================================================================
-  # db — PostgreSQL 16
-  # ==========================================================================
-  db:
-    image: postgres:16-alpine
-    container_name: phantasm_db
-    restart: unless-stopped
-
-    environment:
-      POSTGRES_DB:       ${POSTGRES_DB}
-      POSTGRES_USER:     ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-      # Harden the default PostgreSQL config
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
-
-    volumes:
-      # Persist database files across restarts
-      - postgres_data:/var/lib/postgresql/data
-      # Optional: mount a custom postgresql.conf for tuning
-      # - ./infra/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-
-    networks:
-      - phantasm_net
-
-    # Health check — backend waits for this before starting
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-    # Limit resource usage
-    deploy:
-      resources:
-        limits:
-          cpus:   "0.50"
-          memory: "512M"
-
-    # Never expose the DB port to the host in production.
-    # Uncomment only for local debugging:
-    # ports:
-    #   - "5432:5432"
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-
-  # ==========================================================================
-  # backend — FastAPI + Uvicorn
+  # backend — FastAPI + Uvicorn  (connects to Neon over SSL)
   # ==========================================================================
   backend:
     build:
@@ -103,29 +31,19 @@ services:
     container_name: phantasm_backend
     restart: unless-stopped
 
-    # Load all secrets from .env
     env_file: .env
 
-    # Pass individual env vars explicitly so the image can be used
-    # without a .env file if needed (e.g. in CI with secret injection).
     environment:
-      # Neon (or any external DB): set DATABASE_URL in .env and leave POSTGRES_* blank.
-      # Local Docker Postgres: leave DATABASE_URL blank and fill POSTGRES_* vars.
-      DATABASE_URL:      ${DATABASE_URL:-}
-      POSTGRES_HOST:     ${POSTGRES_HOST:-db}
-      POSTGRES_PORT:     ${POSTGRES_PORT:-5432}
-      POSTGRES_DB:       ${POSTGRES_DB:-}
-      POSTGRES_USER:     ${POSTGRES_USER:-}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      DATABASE_URL:      ${DATABASE_URL}
       JWT_SECRET_KEY:    ${JWT_SECRET_KEY}
       JWT_ALGORITHM:     ${JWT_ALGORITHM:-HS256}
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
-      SMTP_HOST:         ${SMTP_HOST}
+      SMTP_HOST:         ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT:         ${SMTP_PORT:-587}
       SMTP_USE_TLS:      ${SMTP_USE_TLS:-true}
       SMTP_USERNAME:     ${SMTP_USERNAME}
       SMTP_PASSWORD:     ${SMTP_PASSWORD}
-      SMTP_FROM_NAME:    ${SMTP_FROM_NAME}
+      SMTP_FROM_NAME:    ${SMTP_FROM_NAME:-Serenity Psychiatric Care}
       SMTP_FROM_EMAIL:   ${SMTP_FROM_EMAIL}
       APP_ENV:           ${APP_ENV:-production}
       APP_DEBUG:         ${APP_DEBUG:-false}
@@ -139,40 +57,34 @@ services:
       ADMIN_SEED_EMAIL:          ${ADMIN_SEED_EMAIL}
       ADMIN_SEED_PASSWORD:       ${ADMIN_SEED_PASSWORD}
 
-    # Backend is NOT exposed to the host — Nginx is the only entry point.
-    # Uncomment for local API testing:
     # ports:
-    #   - "8000:8000"
+    #   - "8000:8000"   # uncomment only for direct API debugging
 
     networks:
       - phantasm_net
 
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
 
-    # healthcheck:
-    #   test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-    #   interval: 15s
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus:   "1.00"
+          memory: "512M"
 
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus:   "1.00"
-    #       memory: "512M"
-
-    # logging:
-    #   driver: "json-file"
-    #   options:
-    #     max-size: "20m"
-    #     max-file: "5"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 
   # ==========================================================================
-  # frontend — Nginx
+  # frontend — Nginx static server + API reverse proxy
   # ==========================================================================
   frontend:
     build:
@@ -182,21 +94,20 @@ services:
     restart: unless-stopped
 
     ports:
-      - "80:80"         # HTTP — add TLS termination (Certbot / Traefik) in prod
-      # - "443:443"     # Uncomment after setting up TLS
+      - "80:80"
 
     networks:
       - phantasm_net
 
     depends_on:
       backend:
-        condition: service_healthy   # Wait for FastAPI to be ready
+        condition: service_healthy
 
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health || exit 1"]
       interval: 15s
-      timeout: 5s
-      retries: 3
+      timeout:  5s
+      retries:  3
       start_period: 10s
 
     deploy:
