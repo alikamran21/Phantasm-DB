@@ -1,0 +1,35 @@
+# frontend/Dockerfile.frontend
+# ============================================================
+# Nginx static file server + reverse proxy to FastAPI backend.
+#
+# Responsibilities:
+#   1. Serve all HTML/JS/CSS files from /usr/share/nginx/html
+#   2. Proxy /api/* requests to the backend container
+#   3. Security headers applied at Nginx level
+# ============================================================
+
+FROM nginx:1.25-alpine
+
+LABEL maintainer="Phantasm-DB Security Team"
+LABEL description="Nginx frontend — serves static files and reverse-proxies API to backend"
+
+# Remove default Nginx config and default html
+RUN rm -rf /etc/nginx/conf.d/default.conf \
+           /usr/share/nginx/html/*
+
+# Copy our custom Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/phantasm.conf
+
+# Copy all frontend static files
+COPY Admin.html           /usr/share/nginx/html/Admin.html
+COPY doctor_portal.html   /usr/share/nginx/html/doctor_portal.html
+COPY login.html           /usr/share/nginx/html/login.html
+COPY patient_portal.html  /usr/share/nginx/html/patient_portal.html
+COPY simulation.html      /usr/share/nginx/html/simulation.html
+COPY Honeypot/            /usr/share/nginx/html/Honeypot/
+
+# Nginx runs on port 80
+EXPOSE 80
+
+# Use the default Nginx foreground entrypoint
+CMD ["nginx", "-g", "daemon off;"]
