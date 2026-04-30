@@ -409,7 +409,7 @@ function renderUserTable(users) {
 async function unflagUser(id) {
     if (!confirm(`Clear attacker flag for user ID ${id}?`)) return;
     try {
-        const res = await fetch(`${API_BASE}/admin/unflag-user/${id}`, { method:'POST', headers: authHeaders() });
+        const res = await fetch(`${API_BASE}/admin/unflag-user`, { method:'POST', headers: authHeaders(), body: JSON.stringify({user_id: id}) });
         if (res.ok) { showToast(`User ${id} unflagged.`,'success'); loadAllData(); }
         else showToast('Failed to unflag user.','error');
     } catch { showToast('Network error.','error'); }

@@ -1,13 +1,13 @@
-# Phantasm-DB .gitignore
+# Vercel Phantasm-DB .gitignore
 
-# --- Secrets (NEVER commit these) ---
+# Secrets — NEVER commit
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# --- Python ---
+# Python
 __pycache__/
 *.py[cod]
 *.so
@@ -15,20 +15,10 @@ __pycache__/
 venv/
 env/
 *.egg-info/
-dist/
-build/
-.pytest_cache/
-.ruff_cache/
-htmlcov/
-.coverage
 
-# --- Node (if frontend tooling added later) ---
-node_modules/
-.npm/
+# Vercel
+.vercel/
 
-# --- Docker ---
-*.log
-
-# --- OS ---
+# OS
 .DS_Store
 Thumbs.db
