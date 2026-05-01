@@ -1,25 +1,29 @@
 # api/_portal_base.py
 """
-Shared portal guard and honeypot gate used by all portal API functions.
+Shared portal guard and honeypot gate for all portal API functions.
 
-get_authenticated_user() — decodes JWT, re-fetches user from DB
-honeypot_gate()          — checks fresh DB flag, logs action, returns bool
+ERD alignment:
+  - ProductionUser.identity_id  is the PK (not .id)
+  - is_flagged_as_attacker lives on ProductionUser
+  - ForensicLedger.was_deceived = True for honeypot actions
 """
-import json
 import os
-import sys
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from _auth_utils import decode_token
-from _models import AuditLog, User
+from _models import ProductionUser, ForensicLedger
 from _security import write_audit_log
 
 # ---------------------------------------------------------------------------
-# Synthetic shadow data shown to trapped attackers
-# All names, MRNs, diagnoses are entirely fabricated.
+# Backward-compat alias  (some files still import User)
+# ---------------------------------------------------------------------------
+User = ProductionUser
+
+# ---------------------------------------------------------------------------
+# Synthetic shadow data — shown to trapped attackers (no real PII)
 # ---------------------------------------------------------------------------
 SHADOW_PATIENTS = [
     {
@@ -53,18 +57,18 @@ SHADOW_PATIENT_SELF = {
 }
 
 SHADOW_DOCTOR_PROFILE = {
-    "id": 8001, "npi": "DOC-SHADOW-01", "full_name": "Dr. Elias Thornton",
-    "specialty": "Psychiatry", "patient_count": len(SHADOW_PATIENTS),
+    "id": 8001, "license_no": "DOC-SHADOW-01", "full_name": "Dr. Elias Thornton",
+    "specialization": "Psychiatry", "patient_count": len(SHADOW_PATIENTS),
 }
 
 
 async def get_authenticated_user(
     token: Optional[str],
     db: AsyncSession,
-) -> tuple[Optional[User], Optional[str]]:
+) -> tuple[Optional[ProductionUser], Optional[str]]:
     """
-    Decode JWT and return (user, None) on success or (None, error_message).
-    Re-fetches from DB so is_flagged_as_attacker is always fresh.
+    Decode JWT → fetch fresh ProductionUser from DB.
+    Returns (user, None) on success or (None, error_string).
     """
     if not token:
         return None, "Not authenticated."
@@ -74,8 +78,10 @@ async def get_authenticated_user(
         return None, str(e)
 
     user_id = int(payload["sub"])
-    result  = await db.execute(select(User).where(User.id == user_id))
-    user    = result.scalar_one_or_none()
+    result  = await db.execute(
+        select(ProductionUser).where(ProductionUser.identity_id == user_id)
+    )
+    user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
         return None, "User not found or inactive."
@@ -85,7 +91,7 @@ async def get_authenticated_user(
 
 async def honeypot_gate(
     db: AsyncSession,
-    user: User,
+    user: ProductionUser,
     ip: str,
     user_agent: str,
     action: str,
@@ -93,16 +99,23 @@ async def honeypot_gate(
     payload: Optional[str] = None,
 ) -> bool:
     """
-    Re-read the attacker flag from DB, log the action, return True if trapped.
+    Re-read is_flagged_as_attacker from DB (fresh), log the action,
+    return True if this user should be served honeypot content.
+    Sets was_deceived=True in ForensicLedger for honeypot actions.
     """
-    result     = await db.execute(select(User).where(User.id == user.id))
+    result     = await db.execute(
+        select(ProductionUser).where(ProductionUser.identity_id == user.identity_id)
+    )
     fresh_user = result.scalar_one_or_none()
     is_trap    = bool(fresh_user and fresh_user.is_flagged_as_attacker)
 
     await write_audit_log(
         db, ip, action, endpoint,
-        method="POST", user_agent=user_agent,
-        user_id=user.id, payload=payload,
-        is_honeypot=is_trap, is_malicious=is_trap,
+        method      = "POST",
+        user_agent  = user_agent,
+        user_id     = user.identity_id,
+        payload     = payload,
+        is_honeypot = is_trap,
+        is_malicious= is_trap,
     )
     return is_trap

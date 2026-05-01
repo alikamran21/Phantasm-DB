@@ -26,6 +26,10 @@
       "dest": "/api/init-db.py"
     },
     {
+      "src": "/api/auth/lookup",
+      "dest": "/api/auth/lookup.py"
+    },
+    {
       "src": "/api/auth/login",
       "dest": "/api/auth/login.py"
     },

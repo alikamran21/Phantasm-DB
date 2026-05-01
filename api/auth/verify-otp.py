@@ -1,8 +1,5 @@
 # api/auth/verify-otp.py
-"""
-POST /api/auth/verify-otp
-Step 2 of 2FA — validate OTP, issue JWT with honeypot flag if attacker.
-"""
+"""POST /api/auth/verify-otp — validates OTP, issues JWT."""
 import asyncio
 import json
 import os
@@ -13,31 +10,32 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from sqlalchemy import select
 
 from _db import _SessionLocal
-from _models import OTPRequest, User
+from _models import OTPRequest, ProductionUser
 from _auth_utils import create_access_token
-from _handler_base import client_ip, cors_headers, err, ok, parse_body, preflight
+from _handler_base import client_ip, cors_headers, err, parse_body, preflight
 from _security import check_rate_limit, scan_for_attacks, write_audit_log
 
 
 async def _handle(body: dict, ip: str, user_agent: str) -> tuple[int, dict]:
     if not check_rate_limit(ip):
-        return 429, {"detail": "Too many requests."}
+        return 429, {"detail": "Too many requests. Please wait before trying again."}
 
-    email = str(body.get("email", "")).strip().lower()
-    otp   = str(body.get("otp",   "")).strip()
+    internal_id = body.get("internal_id")
+    otp         = str(body.get("otp", "")).strip()
 
-    if not email or not otp:
-        return 400, {"detail": "Email and OTP are required."}
+    if not internal_id or not otp:
+        return 400, {"detail": "Verification code is required."}
 
-    # Scan OTP field for injection attempts
     attack = scan_for_attacks(otp)
 
     async with _SessionLocal() as db:
-        result = await db.execute(select(User).where(User.email == email))
-        user: User | None = result.scalar_one_or_none()
+        result = await db.execute(
+            select(ProductionUser).where(ProductionUser.identity_id == int(internal_id))
+        )
+        user = result.scalar_one_or_none()
 
         if not user:
-            return 401, {"detail": "Invalid OTP."}
+            return 401, {"detail": "Invalid verification code."}
 
         if attack:
             category, snippet = attack
@@ -46,39 +44,37 @@ async def _handle(body: dict, ip: str, user_agent: str) -> tuple[int, dict]:
             await write_audit_log(
                 db, ip, f"ATTACK_DETECTED:{category}", "/api/auth/verify-otp",
                 method="POST", user_agent=user_agent,
-                user_id=user.id, payload=otp[:80],
+                user_id=user.identity_id, payload=otp[:80],
                 is_malicious=True,
                 detection_reason=f"{category}: '{snippet}'",
             )
 
-        # Find latest unused, unexpired OTP
         otp_result = await db.execute(
             select(OTPRequest)
-            .where(OTPRequest.user_id == user.id, OTPRequest.is_used == False)  # noqa: E712
+            .where(OTPRequest.user_id == user.identity_id, OTPRequest.is_used == False)  # noqa
             .order_by(OTPRequest.created_at.desc())
             .limit(1)
         )
-        otp_rec: OTPRequest | None = otp_result.scalar_one_or_none()
+        otp_rec = otp_result.scalar_one_or_none()
 
         if not otp_rec or not otp_rec.is_valid() or otp_rec.otp_code != otp:
             await write_audit_log(
                 db, ip, "OTP_FAIL", "/api/auth/verify-otp",
                 method="POST", user_agent=user_agent,
-                user_id=user.id, response_status=401,
+                user_id=user.identity_id, response_status=401,
             )
-            return 401, {"detail": "Invalid or expired OTP."}
+            return 401, {"detail": "Invalid or expired verification code. Please try again."}
 
-        # Mark OTP consumed
         otp_rec.is_used = True
         await db.commit()
 
         is_honeypot = user.is_flagged_as_attacker
-        token       = create_access_token(user.id, user.role.value, is_honeypot=is_honeypot)
+        token       = create_access_token(user.identity_id, user.role.value, is_honeypot=is_honeypot)
 
         await write_audit_log(
             db, ip, "LOGIN_SUCCESS", "/api/auth/verify-otp",
             method="POST", user_agent=user_agent,
-            user_id=user.id, response_status=200,
+            user_id=user.identity_id, response_status=200,
             is_honeypot=is_honeypot,
         )
 
