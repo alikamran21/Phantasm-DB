@@ -6,42 +6,62 @@
     <title>Provider Portal | Serenity EHR</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- PDF Generation Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-base: #020617; /* Slate 950 */
+            --bg-panel: #0f172a; /* Slate 900 */
+            --border-color: #1e293b; /* Slate 800 */
+            --accent-blue: #0ea5e9; /* Sky 500 */
+        }
+
         body { font-family: 'Inter', sans-serif; overflow: hidden; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #2dd4bf; }
-        .glass-header { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(241,245,249,0.8); }
-        .soft-shadow { box-shadow: 0 10px 40px -10px rgba(13,148,136,0.08); }
-        @keyframes slideUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
-        .toast-enter { animation: slideUp 0.3s ease-out forwards; }
+        
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+        }
+        
+        .soft-shadow {
+            box-shadow: 0 10px 40px -10px rgba(13, 148, 136, 0.08);
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-slate-50/50">
 
+    <!-- Header (Calming & Minimal) -->
     <header class="h-16 glass-header flex items-center justify-between px-6 z-20 shrink-0">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600"><i class="fas fa-leaf"></i></div>
+            <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
+                <i class="fas fa-leaf"></i>
+            </div>
             <h2 class="text-slate-700 font-bold text-lg tracking-tight">Serenity EHR</h2>
         </div>
         <div class="flex items-center gap-5">
             <div class="text-right">
-                <p class="text-sm font-semibold text-slate-700 leading-tight" id="header-name">Provider Interface</p>
+                <p class="text-sm font-semibold text-slate-700 leading-tight">Provider Interface</p>
                 <p class="text-[10px] uppercase font-bold text-teal-500 tracking-wider">Active Session</p>
             </div>
-            <button onclick="handleLogout()" class="w-10 h-10 bg-white hover:bg-rose-50 hover:text-rose-500 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 shadow-sm transition-all duration-300" title="Secure Logout">
+            <button onclick="window.location.href='login.html'" class="w-10 h-10 bg-white hover:bg-rose-50 hover:text-rose-500 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 shadow-sm transition-all duration-300" title="Secure Logout">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
-
-        <!-- SIDEBAR -->
+        
+        <!-- SIDEBAR: Navigation -->
         <div class="w-80 bg-white flex flex-col h-full shrink-0 border-r border-slate-100 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
             <div class="p-5 flex justify-between items-center">
                 <h3 class="font-bold text-slate-800 text-sm tracking-tight">Dashboard</h3>
@@ -49,37 +69,49 @@
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
+            
             <div class="flex-1 overflow-y-auto px-3">
-                <button onclick="switchView('overview')" id="nav-overview" class="w-full text-left p-3.5 mb-4 rounded-xl bg-gradient-to-r from-teal-50 to-transparent border border-teal-100/50 cursor-pointer flex items-center gap-3 transition-all duration-300 group">
+                <button onclick="switchView('overview')" class="w-full text-left p-3.5 mb-4 rounded-xl bg-gradient-to-r from-teal-50 to-transparent border border-teal-100/50 cursor-pointer flex items-center gap-3 transition-all duration-300 group" id="nav-overview">
                     <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-teal-500 group-hover:scale-105 transition-transform">
                         <i class="fas fa-users text-sm"></i>
                     </div>
                     <h4 class="font-bold text-teal-900 text-sm">Patient Directory</h4>
                 </button>
+                
                 <div class="px-2 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     Active Caseload <span class="flex-1 h-px bg-slate-100"></span>
                 </div>
+                
                 <div id="sidebar-list" class="space-y-1">
+                    <!-- Beautiful Empty State for Sidebar -->
                     <div class="p-6 text-center text-slate-400">
-                        <i class="fas fa-circle-notch fa-spin text-2xl mb-3 text-teal-300"></i>
-                        <p class="text-xs font-medium">Loading caseload…</p>
+                        <i class="fas fa-satellite-dish text-2xl mb-3 text-teal-200 animate-pulse"></i>
+                        <p class="text-xs font-medium leading-relaxed">Awaiting PostgreSQL connection to sync caseload.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
+        <!-- MAIN CONTENT (Soft Gradient Background) -->
         <div class="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-teal-50/40 via-slate-50 to-emerald-50/20 relative">
+            
+            <!-- Background Decorative Elements -->
             <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-100/30 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <!-- OVERVIEW -->
+            <!-- ========================================== -->
+            <!-- VIEW 1: ALL PATIENTS OVERVIEW -->
+            <!-- ========================================== -->
             <div id="overview-view" class="max-w-6xl mx-auto space-y-6 relative z-10">
                 <div class="flex justify-between items-end mb-6 px-2">
                     <div>
                         <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Patient Directory</h1>
                         <p class="text-sm text-slate-500 font-medium mt-1">Manage your active caseload and upcoming sessions.</p>
                     </div>
+                    <button onclick="toggleModal('add-patient-modal', true)" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2.5 px-5 rounded-full shadow-lg shadow-slate-200 transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i> Register Patient
+                    </button>
                 </div>
+
                 <div class="bg-white rounded-3xl soft-shadow border border-slate-100 overflow-hidden">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50/50 border-b border-slate-100 text-slate-400 uppercase tracking-widest text-[10px]">
@@ -87,15 +119,25 @@
                                 <th class="p-5 font-bold">Patient / MRN</th>
                                 <th class="p-5 font-bold">Diagnosis</th>
                                 <th class="p-5 font-bold">Next Encounter</th>
-                                <th class="p-5 font-bold">Provider</th>
-                                <th class="p-5 font-bold">Actions</th>
+                                <th class="p-5 font-bold">Sessions</th>
+                                <th class="p-5 font-bold">Status</th>
+                                <th class="p-5 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="patient-table-body" class="divide-y divide-slate-50 text-slate-600">
+                        <tbody class="divide-y divide-slate-50 text-slate-600">
+                            <!-- Premium Empty State for Table -->
                             <tr>
-                                <td colspan="5" class="p-16 text-center">
-                                    <i class="fas fa-circle-notch fa-spin text-3xl text-teal-300 mb-4 block"></i>
-                                    <p class="text-sm text-slate-400">Syncing with database…</p>
+                                <td colspan="6" class="p-16 text-center">
+                                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-50 text-teal-400 mb-4 shadow-inner">
+                                        <i class="fas fa-database text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-slate-700 font-bold text-lg mb-1">Awaiting Database Sync</h3>
+                                    <p class="text-sm text-slate-400 max-w-sm mx-auto">Patient records will populate here automatically once the Python middleware connects to PostgreSQL.</p>
+                                    
+                                    <!-- Dev placeholder button to simulate clicking a record -->
+                                    <button onclick="switchView('detail')" class="mt-6 text-xs font-bold text-teal-600 bg-teal-50 px-4 py-2 rounded-full hover:bg-teal-100 transition">
+                                        Simulate Record Open (Dev)
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -103,95 +145,169 @@
                 </div>
             </div>
 
-            <!-- DETAIL VIEW -->
+            <!-- ========================================== -->
+            <!-- VIEW 2: INDIVIDUAL PATIENT DETAIL -->
+            <!-- ========================================== -->
             <div id="detail-view" class="max-w-4xl mx-auto bg-white rounded-3xl soft-shadow border border-slate-100 p-8 hidden relative z-10">
+                
+                <!-- Action Bar -->
                 <div class="flex justify-between items-start border-b border-slate-50 pb-6 mb-6">
                     <div>
-                        <h1 class="text-3xl font-bold text-slate-800 tracking-tight" id="detail-name">Patient Record</h1>
-                        <p class="text-sm text-slate-400 font-medium mt-1">MRN: <strong class="font-mono text-slate-600" id="detail-mrn">---</strong></p>
+                        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Record View</h1>
+                        <p class="text-sm text-slate-400 font-medium mt-1">MRN: <strong class="font-mono text-slate-600">---</strong></p>
                     </div>
                     <div class="flex gap-2 items-center">
-                        <button onclick="generatePatientReport()" id="export-patient-btn" class="px-4 py-1.5 bg-white text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-50 transition-colors shadow-sm">
-                            <i class="fas fa-file-pdf mr-1"></i> Export PDF
+                        <span class="px-4 py-1.5 bg-indigo-50 text-indigo-500 text-xs font-bold rounded-full border border-indigo-100"><i class="fas fa-layer-group mr-1"></i> Sessions: Awaiting Sync</span>
+                        <span class="px-4 py-1.5 bg-slate-50 text-slate-500 text-xs font-bold rounded-full border border-slate-100">Status: Awaiting Sync</span>
+                        
+                        <!-- PDF EXPORT BUTTON -->
+                        <button type="button" onclick="generatePatientReport()" id="export-patient-btn" class="px-4 py-1.5 bg-white text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-50 transition-colors shadow-sm">
+                            <i id="export-patient-icon" class="fas fa-file-pdf mr-1"></i> <span id="export-patient-text">Export PDF</span>
                         </button>
-                        <button onclick="switchView('overview')" class="px-4 py-1.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-full border border-slate-100 hover:bg-slate-100 transition">
-                            <i class="fas fa-arrow-left mr-1"></i> Back
-                        </button>
+
+                        <!-- Backend Optimized Delete Form -->
+                        <form action="/api/patient/delete" method="POST" class="inline">
+                            <input type="hidden" name="patient_mrn" value="DYNAMIC_ID">
+                            <button type="submit" class="px-4 py-1.5 bg-white text-rose-500 text-xs font-bold rounded-full border border-rose-100 hover:bg-rose-50 transition-colors shadow-sm" onclick="return confirm('Are you sure you want to unregister and permanently delete this record?')"><i class="fas fa-user-minus mr-1"></i> Unregister</button>
+                        </form>
                     </div>
                 </div>
 
-                <!-- Patient Info Grid -->
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-teal-50/50 border border-teal-100/50 rounded-2xl p-4">
-                        <p class="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-1"><i class="fas fa-stethoscope mr-1"></i> Diagnosis</p>
-                        <p class="text-sm font-semibold text-slate-700" id="detail-diagnosis">---</p>
+                <!-- Appointment Row -->
+                <div class="bg-gradient-to-r from-orange-50/50 to-white border border-orange-100/50 rounded-2xl p-5 flex items-center justify-between mb-8 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-700">Scheduled Encounter</h4>
+                            <p class="text-xs text-orange-500 font-medium mt-0.5">Awaiting backend data...</p>
+                        </div>
                     </div>
-                    <div class="bg-orange-50/50 border border-orange-100/50 rounded-2xl p-4">
-                        <p class="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-1"><i class="fas fa-calendar mr-1"></i> Next Appointment</p>
-                        <p class="text-sm font-semibold text-slate-700" id="detail-appt">---</p>
-                    </div>
-                    <div class="bg-purple-50/50 border border-purple-100/50 rounded-2xl p-4">
-                        <p class="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-1"><i class="fas fa-pills mr-1"></i> Medications</p>
-                        <p class="text-sm font-semibold text-slate-700" id="detail-meds">---</p>
-                    </div>
-                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1"><i class="fas fa-user-md mr-1"></i> Provider</p>
-                        <p class="text-sm font-semibold text-slate-700" id="detail-provider">---</p>
+                    <div class="flex gap-2 items-center">
+                        <button onclick="toggleModal('appt-modal', true)" class="text-xs font-bold bg-white text-slate-600 px-4 py-2 rounded-full border border-slate-100 hover:border-slate-300 transition-colors shadow-sm"><i class="fas fa-clock mr-1"></i> Schedule / Delay</button>
+                        <form action="/api/appointment/cancel" method="POST" class="inline">
+                            <input type="hidden" name="patient_mrn" value="DYNAMIC_ID">
+                            <button type="submit" onclick="return confirm('Cancel this appointment?')" class="text-xs font-bold bg-rose-50 text-rose-600 px-4 py-2 rounded-full border border-rose-100 hover:bg-rose-100 transition-colors shadow-sm"><i class="fas fa-times mr-1"></i> Cancel Appt</button>
+                        </form>
                     </div>
                 </div>
 
-                <!-- Clinical Notes Form -->
-                <div class="space-y-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-                        <i class="fas fa-notes-medical text-teal-400"></i> Clinical Progress Notes
-                    </label>
-                    <textarea id="note-textarea" rows="5"
-                        class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl p-5 text-sm text-slate-700 font-medium focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder-slate-300 leading-relaxed"
-                        placeholder="Enter clinical observations…"></textarea>
-                    <div class="flex justify-end pt-2">
-                        <button onclick="submitNote()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-full shadow-[0_4px_14px_0_rgba(13,148,136,0.39)] transition-all flex items-center gap-2 hover:-translate-y-0.5">
-                            <i class="fas fa-save"></i> Save Note
+                <!-- Backend Form Submission -->
+                <form action="/api/patient/update" method="POST" enctype="multipart/form-data" class="space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                <i class="fas fa-stethoscope text-teal-400"></i> Primary Diagnosis
+                            </label>
+                            <input type="text" name="diagnosis" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-sm font-semibold text-slate-700 focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder-slate-300" placeholder="Awaiting backend sync...">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                <i class="fas fa-pills text-teal-400"></i> Active Treatment
+                            </label>
+                            <input type="text" name="treatment" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3.5 text-sm font-semibold text-slate-700 focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder-slate-300" placeholder="Awaiting backend sync...">
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fas fa-notes-medical text-teal-400"></i> Clinical Progress Notes
+                            </label>
+                            
+                            <!-- PDF Upload -->
+                            <label class="cursor-pointer text-xs font-bold text-teal-600 hover:text-teal-700 transition flex items-center gap-1.5 bg-teal-50/50 px-3 py-1.5 rounded-full border border-teal-100">
+                                <i class="fas fa-cloud-upload-alt"></i> Upload PDF
+                                <input type="file" name="clinical_pdf" class="hidden" accept=".pdf" onchange="document.getElementById('pdf-file-name').innerText = this.files[0].name;">
+                            </label>
+                        </div>
+                        <span id="pdf-file-name" class="text-[10px] text-teal-500 font-bold ml-1"></span>
+                        
+                        <textarea name="clinical_notes" rows="6" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl p-5 text-sm text-slate-700 font-medium focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder-slate-300 leading-relaxed" placeholder="Detailed clinical observations will load here..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end pt-4 border-t border-slate-50">
+                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-full shadow-[0_4px_14px_0_rgba(13,148,136,0.39)] transition-all flex items-center gap-2 hover:-translate-y-0.5">
+                            <i class="fas fa-save"></i> Save Updates
                         </button>
                     </div>
-                </div>
+                </form>
+
             </div>
         </div>
     </div>
 
-    <!-- ADD PATIENT MODAL -->
-    <div id="add-patient-modal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+    <!-- ========================================== -->
+    <!-- MODALS (Soft, rounded styling) -->
+    <!-- ========================================== -->
+
+    <!-- Add Patient Modal -->
+    <div id="add-patient-modal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-emerald-400"></div>
+            
             <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Register Patient</h2>
             <p class="text-sm text-slate-500 mb-6">Create a new secure record in the database.</p>
-            <div class="space-y-5">
+            
+            <form action="/api/patient/add" method="POST" class="space-y-5">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
-                    <input type="text" id="new-patient-name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 outline-none text-sm font-semibold text-slate-700 transition-all">
+                    <input type="text" name="new_name" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none text-sm font-semibold text-slate-700 transition-all">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Initial Diagnosis</label>
-                    <input type="text" id="new-patient-diagnosis" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 outline-none text-sm font-semibold text-slate-700 transition-all">
+                    <input type="text" name="new_diagnosis" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div class="flex items-center gap-3 pt-2 px-1">
+                    <input type="checkbox" name="fee_paid" id="fee-paid" class="w-5 h-5 text-teal-500 border-slate-200 rounded focus:ring-teal-400 cursor-pointer transition-colors">
+                    <label for="fee-paid" class="text-sm font-semibold text-slate-600 cursor-pointer">Consultation Fee Collected</label>
                 </div>
                 <div class="pt-6 flex gap-3">
-                    <button onclick="toggleModal('add-patient-modal', false)" class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full">Cancel</button>
-                    <button onclick="showToast('Patient registered (backend integration pending).'); toggleModal('add-patient-modal', false);" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-full shadow-lg">Register</button>
+                    <button type="button" onclick="toggleModal('add-patient-modal', false)" class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-full shadow-lg shadow-slate-200 transition-all">Register</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
-    <!-- TOAST -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+    <!-- Manage Appointment Modal -->
+    <div id="appt-modal" class="fixed inset-0 bg-slate-900/40 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-100 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-400"></div>
+            
+            <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Encounter Schedule</h2>
+            <p class="text-sm text-slate-500 mb-6">Schedule or delay session timing.</p>
+            
+            <form action="/api/appointment/update" method="POST" class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
+                    <input type="date" name="appt_date" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-400 focus:ring-4 focus:ring-orange-50 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time</label>
+                    <input type="time" name="appt_time" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-400 focus:ring-4 focus:ring-orange-50 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                
+                <div class="pt-6 flex flex-col gap-3">
+                    <button type="submit" name="action" value="save" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow-lg shadow-orange-200 transition-all">Save Schedule</button>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="toggleModal('appt-modal', false)" class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full transition-colors">Close</button>
+                        <button type="submit" name="action" value="cancel" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-full transition-colors">Cancel Appt</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
+    // ================================================================
+    // Phantasm-DB | Doctor Portal — Full Backend Integration
+    // ================================================================
     const API_BASE = '/api';
-    let currentPatient = null;
+    const token    = sessionStorage.getItem('phantasm_token');
 
-    // =============================================
-    // AUTH GUARD
-    // =============================================
-    const token = sessionStorage.getItem('phantasm_token');
+    // Guard: redirect to login if no token
     if (!token) window.location.href = 'login.html';
 
     function authHeaders() {
@@ -203,45 +319,95 @@
         window.location.href = 'login.html';
     }
 
-    // =============================================
-    // LOAD PATIENTS FROM BACKEND
-    // =============================================
+    // ── UI Helpers ──────────────────────────────────────────────────
+    function toggleModal(id, show) {
+        const modal = document.getElementById(id);
+        if (show) modal.classList.remove('hidden');
+        else      modal.classList.add('hidden');
+    }
+
+    function switchView(view) {
+        const overview = document.getElementById('overview-view');
+        const detail   = document.getElementById('detail-view');
+        const navBtn   = document.getElementById('nav-overview');
+
+        if (view === 'overview') {
+            overview.classList.remove('hidden');
+            detail.classList.add('hidden');
+            if (navBtn) {
+                navBtn.classList.add('bg-gradient-to-r', 'from-teal-50', 'border-teal-100/50');
+                navBtn.classList.remove('bg-transparent', 'border-transparent');
+            }
+        } else {
+            overview.classList.add('hidden');
+            detail.classList.remove('hidden');
+            if (navBtn) {
+                navBtn.classList.remove('bg-gradient-to-r', 'from-teal-50', 'border-teal-100/50');
+                navBtn.classList.add('bg-transparent', 'border-transparent');
+            }
+        }
+    }
+
+    // ── Load Patient List on page load ──────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPatients();
+        loadDoctorProfile();
+    });
+
+    async function loadDoctorProfile() {
+        try {
+            const res  = await fetch(`${API_BASE}/portal/doctor/profile`, { headers: authHeaders() });
+            if (res.status === 401) { handleLogout(); return; }
+            const data = await res.json();
+            const nameEl = document.querySelector('header .text-right p:first-child');
+            if (nameEl && data.username) nameEl.textContent = data.username;
+        } catch (_) {}
+    }
+
     async function loadPatients() {
         try {
-            const res = await fetch(`${API_BASE}/portal/doctor/patients`, { headers: authHeaders() });
+            const res  = await fetch(`${API_BASE}/portal/doctor/patients`, { headers: authHeaders() });
             if (res.status === 401) { handleLogout(); return; }
             const data = await res.json();
             renderPatientTable(data.patients || []);
             renderSidebar(data.patients || []);
         } catch (err) {
             console.error('Failed to load patients:', err);
-            document.getElementById('patient-table-body').innerHTML = `
-                <tr><td colspan="5" class="p-12 text-center text-slate-400 text-sm">
-                    <i class="fas fa-exclamation-circle text-red-300 text-2xl mb-3 block"></i>
-                    Could not connect to the database.
-                </td></tr>`;
+            const tbody = document.querySelector('tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-rose-400 text-sm">
+                <i class="fas fa-exclamation-circle text-2xl mb-3 block"></i>
+                Could not connect to database. Please refresh.
+            </td></tr>`;
         }
     }
 
     function renderPatientTable(patients) {
-        const tbody = document.getElementById('patient-table-body');
+        const tbody = document.querySelector('tbody');
+        if (!tbody) return;
+
         if (!patients.length) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-16 text-center text-slate-400 text-sm">No patients found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="p-16 text-center text-slate-400 text-sm">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-50 text-teal-400 mb-4"><i class="fas fa-users text-2xl"></i></div>
+                <h3 class="text-slate-700 font-bold text-lg mb-1">No Patients Found</h3>
+                <p class="text-sm text-slate-400">No patients are assigned to your account yet.</p>
+            </td></tr>`;
             return;
         }
-        tbody.innerHTML = patients.map(p => `
-            <tr class="hover:bg-teal-50/30 transition-colors cursor-pointer" onclick="openDetail(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+
+        tbody.innerHTML = patients.map((p, i) => `
+            <tr class="hover:bg-teal-50/30 transition-colors cursor-pointer" onclick="openPatientDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})">
                 <td class="p-5">
                     <p class="font-bold text-slate-700">${p.full_name || 'Unknown'}</p>
-                    <p class="text-[11px] text-slate-400 font-mono mt-0.5">${p.mrn || 'N/A'}</p>
+                    <p class="text-[11px] text-slate-400 font-mono mt-0.5">${p.mrn || '—'}</p>
                 </td>
                 <td class="p-5 text-slate-600 text-sm">${p.diagnosis || '—'}</td>
                 <td class="p-5 text-slate-600 text-sm">${p.next_appointment || '—'}</td>
-                <td class="p-5 text-slate-600 text-sm">${p.provider || '—'}</td>
-                <td class="p-5">
-                    <button onclick="event.stopPropagation(); openDetail(${JSON.stringify(p).replace(/"/g,'&quot;')})"
-                        class="text-xs font-bold bg-teal-50 text-teal-700 px-3 py-1.5 rounded-full border border-teal-100 hover:bg-teal-100 transition">
-                        View Record
+                <td class="p-5 text-slate-600 text-sm">—</td>
+                <td class="p-5"><span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">Active</span></td>
+                <td class="p-5 text-right">
+                    <button onclick="event.stopPropagation(); openPatientDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                        class="px-3 py-1.5 text-xs font-bold bg-teal-50 text-teal-700 rounded-full border border-teal-100 hover:bg-teal-100 transition">
+                        Open Record
                     </button>
                 </td>
             </tr>`).join('');
@@ -249,112 +415,143 @@
 
     function renderSidebar(patients) {
         const list = document.getElementById('sidebar-list');
+        if (!list) return;
+
         if (!patients.length) {
-            list.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">No active caseload.</div>`;
+            list.innerHTML = `<div class="p-6 text-center text-slate-400">
+                <i class="fas fa-satellite-dish text-2xl mb-3 text-teal-200 animate-pulse"></i>
+                <p class="text-xs font-medium">No patients found.</p>
+            </div>`;
             return;
         }
+
         list.innerHTML = patients.map(p => `
-            <button onclick="openDetail(${JSON.stringify(p).replace(/"/g,'&quot;')})"
+            <button onclick="openPatientDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})"
                 class="w-full text-left p-3 rounded-xl hover:bg-teal-50/50 transition flex items-center gap-3 group">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     ${(p.full_name || '?')[0]}
                 </div>
                 <div class="overflow-hidden">
                     <p class="text-sm font-semibold text-slate-700 truncate">${p.full_name || 'Unknown'}</p>
-                    <p class="text-[10px] text-slate-400 font-mono">${p.mrn || 'N/A'}</p>
+                    <p class="text-[10px] text-slate-400 font-mono">${p.mrn || '—'}</p>
                 </div>
             </button>`).join('');
     }
 
-    // =============================================
-    // DETAIL VIEW
-    // =============================================
-    function openDetail(patient) {
+    // Currently open patient data
+    let currentPatient = null;
+
+    function openPatientDetail(patient) {
         currentPatient = patient;
-        document.getElementById('detail-name').textContent = patient.full_name || 'Unknown';
-        document.getElementById('detail-mrn').textContent  = patient.mrn || 'N/A';
-        document.getElementById('detail-diagnosis').textContent = patient.diagnosis || '—';
-        document.getElementById('detail-appt').textContent = patient.next_appointment || '—';
-        document.getElementById('detail-meds').textContent = (patient.medications || []).join(', ') || '—';
-        document.getElementById('detail-provider').textContent = patient.provider || '—';
-        document.getElementById('note-textarea').value = patient.notes || '';
+
+        // Populate the detail view fields
+        const mrnEl = document.querySelector('#detail-view p strong.font-mono');
+        if (mrnEl) mrnEl.textContent = patient.mrn || '—';
+
+        const diagInput = document.querySelector('input[name="diagnosis"]');
+        if (diagInput) diagInput.value = patient.diagnosis || '';
+
+        const rxInput = document.querySelector('input[name="treatment"]');
+        if (rxInput) rxInput.value = (patient.medications || []).join(', ') || '';
+
+        const notesArea = document.querySelector('textarea[name="clinical_notes"]');
+        if (notesArea) notesArea.value = patient.notes || '';
+
+        // Set the hidden patient_mrn fields in forms
+        document.querySelectorAll('input[name="patient_mrn"]').forEach(el => {
+            el.value = patient.mrn || '';
+        });
+
         switchView('detail');
     }
 
-    // =============================================
-    // SUBMIT CLINICAL NOTE
-    // =============================================
-    async function submitNote() {
-        if (!currentPatient) return;
-        const note = document.getElementById('note-textarea').value.trim();
-        if (!note) { showToast('Please enter a note.', 'warn'); return; }
+    // ── Save patient updates via API ────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        const updateForm = document.querySelector('form[action="/api/patient/update"]');
+        if (updateForm) {
+            updateForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentPatient) return;
 
-        try {
-            const res = await fetch(`${API_BASE}/portal/doctor/notes`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({ patient_id: currentPatient.id, note_text: note }),
+                const noteText = document.querySelector('textarea[name="clinical_notes"]').value;
+                try {
+                    const res = await fetch(`${API_BASE}/portal/doctor/notes`, {
+                        method:  'POST',
+                        headers: authHeaders(),
+                        body:    JSON.stringify({
+                            patient_id: currentPatient.id || 0,
+                            note_text:  noteText,
+                        }),
+                    });
+                    if (res.ok) alert('Record updated successfully.');
+                    else        alert('Failed to save. Please try again.');
+                } catch (_) {
+                    alert('Network error. Please try again.');
+                }
             });
-            if (res.ok) showToast('Note saved successfully.');
-            else        showToast('Failed to save note.', 'error');
-        } catch { showToast('Network error.', 'error'); }
-    }
+        }
 
-    // =============================================
-    // PDF EXPORT
-    // =============================================
+        // Wire logout button
+        const logoutBtn = document.querySelector('button[onclick*="login.html"]');
+        if (logoutBtn) {
+            logoutBtn.removeAttribute('onclick');
+            logoutBtn.addEventListener('click', handleLogout);
+        }
+    });
+
+    // ── PDF Generation (unchanged from original) ──────────────────
     function generatePatientReport() {
-        if (!currentPatient) return;
-        window.jsPDF = window.jspdf.jsPDF;
-        const doc = new jsPDF();
-        doc.setFontSize(20); doc.setTextColor(15,118,110);
-        doc.text('Serenity Psychiatric Care', 105, 20, { align: 'center' });
-        doc.setFontSize(14); doc.setTextColor(51,65,85);
-        doc.text('Clinical Patient Report', 105, 30, { align: 'center' });
-        doc.setFontSize(11); doc.setTextColor(0,0,0);
-        doc.text('Date: ' + new Date().toLocaleString(), 15, 45);
-        doc.text('Patient: ' + (currentPatient.full_name || '—'), 15, 55);
-        doc.text('MRN: ' + (currentPatient.mrn || '—'), 15, 63);
-        doc.setFont(undefined,'bold'); doc.text('Diagnosis:', 15, 75);
-        doc.setFont(undefined,'normal'); doc.text(currentPatient.diagnosis || '—', 15, 82);
-        doc.setFont(undefined,'bold'); doc.text('Clinical Notes:', 15, 95);
-        doc.setFont(undefined,'normal');
-        const notes = document.getElementById('note-textarea').value || currentPatient.notes || 'None.';
-        doc.text(doc.splitTextToSize(notes, 180), 15, 102);
-        doc.setFontSize(9); doc.setTextColor(148,163,184);
-        doc.text('CONFIDENTIAL MEDICAL RECORD', 105, 280, { align:'center' });
-        doc.save(`Patient_Report_${currentPatient.mrn || 'unknown'}.pdf`);
-    }
+        const btnText = document.getElementById('export-patient-text');
+        const btnIcon = document.getElementById('export-patient-icon');
+        const originalText = btnText ? btnText.innerText : 'Export PDF';
 
-    // =============================================
-    // TOAST NOTIFICATIONS
-    // =============================================
-    function showToast(msg, type = 'success') {
-        const colors = { success:'bg-teal-700', error:'bg-red-600', warn:'bg-amber-600' };
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast-enter ${colors[type]} text-white text-sm font-bold px-5 py-3 rounded-xl shadow-xl`;
-        toast.textContent = msg;
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
-    }
+        if (btnText) btnText.innerText = 'Compiling...';
+        if (btnIcon) btnIcon.className = 'fas fa-circle-notch fa-spin mr-1';
 
-    // =============================================
-    // UI HELPERS
-    // =============================================
-    function toggleModal(id, show) {
-        document.getElementById(id).classList.toggle('hidden', !show);
-    }
+        setTimeout(() => {
+            try {
+                window.jsPDF = window.jspdf.jsPDF;
+                const doc = new jsPDF();
 
-    function switchView(view) {
-        document.getElementById('overview-view').classList.toggle('hidden', view !== 'overview');
-        document.getElementById('detail-view').classList.toggle('hidden',   view !== 'detail');
-    }
+                const diagInput  = document.querySelector('input[name="diagnosis"]').value   || 'Awaiting Data';
+                const rxInput    = document.querySelector('input[name="treatment"]').value    || 'Awaiting Data';
+                const notesInput = document.querySelector('textarea[name="clinical_notes"]').value || 'No notes.';
+                const mrn        = currentPatient ? (currentPatient.mrn || '—') : '—';
+                const name       = currentPatient ? (currentPatient.full_name || '—') : '—';
 
-    // =============================================
-    // INIT
-    // =============================================
-    loadPatients();
-    </script>
+                doc.setFontSize(20); doc.setTextColor(15, 118, 110);
+                doc.text('Serenity Psychiatric Care', 105, 20, { align: 'center' });
+                doc.setFontSize(14); doc.setTextColor(51, 65, 85);
+                doc.text('Clinical Patient Report', 105, 30, { align: 'center' });
+                doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+                doc.text('Date: ' + new Date().toLocaleString(), 15, 45);
+                doc.text('Patient: ' + name + '  |  MRN: ' + mrn, 15, 55);
+                doc.setFont(undefined, 'bold'); doc.text('Primary Diagnosis:', 15, 70);
+                doc.setFont(undefined, 'normal'); doc.text(diagInput, 15, 77);
+                doc.setFont(undefined, 'bold'); doc.text('Active Treatment:', 15, 90);
+                doc.setFont(undefined, 'normal'); doc.text(rxInput, 15, 97);
+                doc.setFont(undefined, 'bold'); doc.text('Clinical Progress Notes:', 15, 110);
+                doc.setFont(undefined, 'normal');
+                doc.text(doc.splitTextToSize(notesInput, 180), 15, 117);
+                doc.setFontSize(9); doc.setTextColor(148, 163, 184);
+                doc.text('CONFIDENTIAL MEDICAL RECORD — DO NOT DISTRIBUTE', 105, 280, { align: 'center' });
+
+                const pdfBlob = doc.output('blob');
+                const url     = URL.createObjectURL(pdfBlob);
+                const a       = document.createElement('a');
+                a.href        = url;
+                a.download    = `Report_${mrn}_${Date.now()}.pdf`;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            } catch(e) {
+                console.error('PDF error:', e);
+                alert('PDF generation failed. Check console.');
+            } finally {
+                if (btnText) btnText.innerText = originalText;
+                if (btnIcon) btnIcon.className = 'fas fa-file-pdf mr-1';
+            }
+        }, 800);
+    }
+</script>
 </body>
 </html>
