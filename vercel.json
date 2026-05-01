@@ -1,9 +1,32 @@
 {
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/login.html"
-    }
+  "version": 2,
+  "name": "phantasm-db",
+  "builds": [
+    { "src": "api/health.py", "use": "@vercel/python", "config": { "maxLambdaSize": "50mb" } },
+    { "src": "api/init-db.py", "use": "@vercel/python", "config": { "maxLambdaSize": "50mb" } },
+    { "src": "api/auth/*.py", "use": "@vercel/python", "config": { "maxLambdaSize": "50mb" } },
+    { "src": "api/admin/*.py", "use": "@vercel/python", "config": { "maxLambdaSize": "50mb" } },
+    { "src": "api/portal/**/*.py", "use": "@vercel/python", "config": { "maxLambdaSize": "50mb" } },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/health", "dest": "/api/health.py" },
+    { "src": "/api/init-db", "dest": "/api/init-db.py" },
+    { "src": "/api/auth/lookup", "dest": "/api/auth/lookup.py" },
+    { "src": "/api/auth/login", "dest": "/api/auth/login.py" },
+    { "src": "/api/auth/verify-otp", "dest": "/api/auth/verify-otp.py" },
+    { "src": "/api/portal/doctor/patients", "dest": "/api/portal/doctor/patients.py" },
+    { "src": "/api/portal/doctor/notes", "dest": "/api/portal/doctor/notes.py" },
+    { "src": "/api/portal/doctor/profile", "dest": "/api/portal/doctor/profile.py" },
+    { "src": "/api/portal/patient/profile", "dest": "/api/portal/patient/profile.py" },
+    { "src": "/api/portal/patient/appointment", "dest": "/api/portal/patient/appointment.py" },
+    { "src": "/api/admin/audit-logs", "dest": "/api/admin/audit-logs.py" },
+    { "src": "/api/admin/flagged-users", "dest": "/api/admin/flagged-users.py" },
+    { "src": "/api/admin/unflag-user", "dest": "/api/admin/unflag-user.py" },
+    { "src": "/Honeypot/(.*)", "dest": "/public/Honeypot/$1" },
+    { "src": "/(Admin|doctor_portal|patient_portal|simulation|login)\\.html", "dest": "/public/$1.html" },
+    { "src": "/", "dest": "/public/login.html" },
+    { "src": "/(.*)", "dest": "/public/login.html" }
   ],
   "headers": [
     {
