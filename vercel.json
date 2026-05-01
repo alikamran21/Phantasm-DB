@@ -1,20 +1,7 @@
 {
-  "version": 2,
+  "version": 4,
   "name": "phantasm-db",
 
-  "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    }
-  ],
 
   "routes": [
     {
