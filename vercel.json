@@ -1,9 +1,19 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*.py": {
-      "runtime": "vercel-python@3.0.7"
-    }
+    "api/health.py":                        { "runtime": "vercel-python@3.0.7" },
+    "api/init-db.py":                       { "runtime": "vercel-python@3.0.7" },
+    "api/auth/login.py":                    { "runtime": "vercel-python@3.0.7" },
+    "api/auth/lookup.py":                   { "runtime": "vercel-python@3.0.7" },
+    "api/auth/verify-otp.py":              { "runtime": "vercel-python@3.0.7" },
+    "api/portal/doctor/patients.py":       { "runtime": "vercel-python@3.0.7" },
+    "api/portal/doctor/notes.py":          { "runtime": "vercel-python@3.0.7" },
+    "api/portal/doctor/profile.py":        { "runtime": "vercel-python@3.0.7" },
+    "api/portal/patient/profile.py":       { "runtime": "vercel-python@3.0.7" },
+    "api/portal/patient/appointment.py":   { "runtime": "vercel-python@3.0.7" },
+    "api/admin/audit-logs.py":             { "runtime": "vercel-python@3.0.7" },
+    "api/admin/flagged-users.py":          { "runtime": "vercel-python@3.0.7" },
+    "api/admin/unflag-user.py":            { "runtime": "vercel-python@3.0.7" }
   },
   "rewrites": [
     { "source": "/", "destination": "/login.html" }
