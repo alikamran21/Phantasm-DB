@@ -15,10 +15,7 @@
     { "source": "/api/admin/audit-logs",           "destination": "/api/admin/audit-logs.py" },
     { "source": "/api/admin/flagged-users",        "destination": "/api/admin/flagged-users.py" },
     { "source": "/api/admin/unflag-user",          "destination": "/api/admin/unflag-user.py" },
-    { "source": "/Honeypot/:file",                 "destination": "/public/Honeypot/:file" },
-    { "source": "/:page.html",                     "destination": "/public/:page.html" },
-    { "source": "/",                               "destination": "/public/login.html" },
-    { "source": "/(.*)",                           "destination": "/public/login.html" }
+    { "source": "/",                               "destination": "/login.html" }
   ],
 
   "headers": [
