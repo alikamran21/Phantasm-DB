@@ -1,11 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python"
-    }
-  ],
+
   "rewrites": [
     { "source": "/api/health",                     "destination": "/api/health.py" },
     { "source": "/api/init-db",                    "destination": "/api/init-db.py" },
@@ -22,6 +17,7 @@
     { "source": "/api/admin/unflag-user",          "destination": "/api/admin/unflag-user.py" },
     { "source": "/",                               "destination": "/login.html" }
   ],
+
   "headers": [
     {
       "source": "/api/(.*)",
