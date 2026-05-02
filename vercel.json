@@ -1,35 +1,24 @@
 {
   "version": 2,
 
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.12",
-      "maxDuration": 30
-    }
-  },
-
-  "env": {
-    "PYTHONPATH": "/var/task/lib"
-  },
-
   "rewrites": [
-    { "source": "/api/health",                       "destination": "/api/health.py" },
-    { "source": "/api/init-db",                      "destination": "/api/init-db.py" },
-    { "source": "/api/auth/login",                   "destination": "/api/auth/login.py" },
-    { "source": "/api/auth/lookup",                  "destination": "/api/auth/lookup.py" },
-    { "source": "/api/auth/verify-otp",              "destination": "/api/auth/verify-otp.py" },
-    { "source": "/api/portal/doctor/patients",       "destination": "/api/portal/doctor/patients.py" },
-    { "source": "/api/portal/doctor/notes",          "destination": "/api/portal/doctor/notes.py" },
-    { "source": "/api/portal/doctor/profile",        "destination": "/api/portal/doctor/profile.py" },
-    { "source": "/api/portal/patient/profile",       "destination": "/api/portal/patient/profile.py" },
-    { "source": "/api/portal/patient/appointment",   "destination": "/api/portal/patient/appointment.py" },
-    { "source": "/api/admin/audit-logs",             "destination": "/api/admin/audit-logs.py" },
-    { "source": "/api/admin/flagged-users",          "destination": "/api/admin/flagged-users.py" },
-    { "source": "/api/admin/unflag-user",            "destination": "/api/admin/unflag-user.py" },
-    { "source": "/Honeypot/:file",                   "destination": "/public/Honeypot/:file" },
-    { "source": "/:page.html",                       "destination": "/public/:page.html" },
-    { "source": "/",                                 "destination": "/public/login.html" },
-    { "source": "/(.*)",                             "destination": "/public/login.html" }
+    { "source": "/api/health",                     "destination": "/api/health.py" },
+    { "source": "/api/init-db",                    "destination": "/api/init-db.py" },
+    { "source": "/api/auth/login",                 "destination": "/api/auth/login.py" },
+    { "source": "/api/auth/lookup",                "destination": "/api/auth/lookup.py" },
+    { "source": "/api/auth/verify-otp",            "destination": "/api/auth/verify-otp.py" },
+    { "source": "/api/portal/doctor/patients",     "destination": "/api/portal/doctor/patients.py" },
+    { "source": "/api/portal/doctor/notes",        "destination": "/api/portal/doctor/notes.py" },
+    { "source": "/api/portal/doctor/profile",      "destination": "/api/portal/doctor/profile.py" },
+    { "source": "/api/portal/patient/profile",     "destination": "/api/portal/patient/profile.py" },
+    { "source": "/api/portal/patient/appointment", "destination": "/api/portal/patient/appointment.py" },
+    { "source": "/api/admin/audit-logs",           "destination": "/api/admin/audit-logs.py" },
+    { "source": "/api/admin/flagged-users",        "destination": "/api/admin/flagged-users.py" },
+    { "source": "/api/admin/unflag-user",          "destination": "/api/admin/unflag-user.py" },
+    { "source": "/Honeypot/:file",                 "destination": "/public/Honeypot/:file" },
+    { "source": "/:page.html",                     "destination": "/public/:page.html" },
+    { "source": "/",                               "destination": "/public/login.html" },
+    { "source": "/(.*)",                           "destination": "/public/login.html" }
   ],
 
   "headers": [
@@ -39,14 +28,6 @@
         { "key": "Access-Control-Allow-Origin",  "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Authorization, Content-Type" }
-      ]
-    },
-    {
-      "source": "/(.*)\\.html",
-      "headers": [
-        { "key": "X-Frame-Options",        "value": "SAMEORIGIN" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-XSS-Protection",       "value": "1; mode=block" }
       ]
     }
   ]
