@@ -4,13 +4,17 @@ POST /api/auth/lookup
 Step 1 — Doctor/Patient ID-based login.
 Looks up by license_no (Doctor) or mrn (Patient), sends OTP to email on file.
 """
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', 'lib')
+if _lib not in _sys.path:
+    _sys.path.insert(0, _lib)
+
 import asyncio
 import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload

@@ -1,10 +1,14 @@
 # api/health.py
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'lib')
+if _lib not in _sys.path:
+    _sys.path.insert(0, _lib)
+
 """GET /api/health — simple liveness probe."""
 import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
 
 from _handler_base import cors_headers, preflight
 

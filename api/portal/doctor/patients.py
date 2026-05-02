@@ -1,8 +1,11 @@
 # api/portal/doctor/patients.py
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', '..', 'lib')
+if _lib not in _sys.path:
+    _sys.path.insert(0, _lib)
+
 """GET /api/portal/doctor/patients"""
 import asyncio, json, os, sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from sqlalchemy import select
 from _db import _SessionLocal

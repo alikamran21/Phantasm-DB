@@ -130,6 +130,7 @@
                         <input type="text" id="prov-target-pat" placeholder="e.g. PT-1042" required class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm font-semibold text-slate-700 transition">
                     </div>
                 </div>
+                <div id="prov-error" class="hidden text-red-600 text-xs font-semibold bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-center"></div>
                 <button type="submit" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-teal-700/20 transition mt-2">
                     Request Authentication
                 </button>
@@ -157,6 +158,7 @@
                         <i class="fas fa-chevron-down absolute right-4 top-4 text-slate-400 text-xs pointer-events-none"></i>
                     </div>
                 </div>
+                <div id="pat-error" class="hidden text-red-600 text-xs font-semibold bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-center"></div>
                 <button type="submit" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-teal-700/20 transition mt-2">
                     Access My Records
                 </button>
@@ -228,23 +230,35 @@
             }
         }
 
-        function showFormError(msg) {
-            // Display inline below the active form using a simple alert fallback
-            // since these are the original HTML files with no dedicated error div
+        function showFormError(msg, role) {
             const safe = (msg && typeof msg === 'string') ? msg : 'Something went wrong. Please try again.';
-            alert(safe);
+            const errorId = role === 'provider' ? 'prov-error' : 'pat-error';
+            const el = document.getElementById(errorId);
+            if (el) {
+                el.textContent = safe;
+                el.classList.remove('hidden');
+                // Auto-hide after 6 seconds
+                setTimeout(() => el.classList.add('hidden'), 6000);
+            }
+        }
+
+        function clearFormError(role) {
+            const errorId = role === 'provider' ? 'prov-error' : 'pat-error';
+            const el = document.getElementById(errorId);
+            if (el) el.classList.add('hidden');
         }
 
         // ── STEP 1: Provider/Patient — lookup by NPI or MRN ─────────────
         async function triggerUserOTP(e, role) {
             e.preventDefault();
+            clearFormError(role);
 
             const userId = role === 'provider'
                 ? document.getElementById('prov-id').value.trim()
                 : document.getElementById('pat-mrn').value.trim();
 
             if (!userId) {
-                showFormError('Please enter your ' + (role === 'provider' ? 'Provider ID.' : 'Patient MRN.'));
+                showFormError('Please enter your ' + (role === 'provider' ? 'Provider ID.' : 'Patient MRN.'), role);
                 return;
             }
 
@@ -265,7 +279,7 @@
                 try { data = await res.json(); } catch(_) { data = {}; }
 
                 if (!res.ok) {
-                    showFormError(data.detail || 'Invalid ID. Please check your credentials.');
+                    showFormError(data.detail || 'Invalid ID. Please check your credentials.', role);
                     return;
                 }
 
@@ -281,7 +295,7 @@
                 toggleUserOTPModal(true);
 
             } catch (_) {
-                showFormError('Network error. Please check your connection.');
+                showFormError('Network error. Please check your connection.', role);
             } finally {
                 if (btn) { btn.disabled = false; btn.innerText = origText; }
             }

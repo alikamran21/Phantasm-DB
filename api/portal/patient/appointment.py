@@ -1,8 +1,11 @@
 # api/portal/patient/appointment.py
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', '..', 'lib')
+if _lib not in _sys.path:
+    _sys.path.insert(0, _lib)
+
 """POST /api/portal/patient/appointment"""
 import asyncio, json, os, sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from _db import _SessionLocal
 from _handler_base import client_ip, cors_headers, err, get_bearer_token, parse_body, preflight
