@@ -182,7 +182,7 @@
 
         // State shared between Step 1 and Step 2
         const loginState = {
-            internalId:       null,   // DB primary key returned by /api/auth/lookup
+            internalId:       null,   // DB primary key returned by /api/lookup
             adminInternalId:  null,   // Same for admin flow
             pendingAdminEmail: '',
             adminStep:        'credentials',
@@ -267,7 +267,7 @@
             if (btn) { btn.disabled = true; btn.innerText = 'Sending code...'; }
 
             try {
-                const res  = await fetch(`${API_BASE}/auth/lookup`, {
+                const res  = await fetch(`${API_BASE}/lookup`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
@@ -324,7 +324,7 @@
             if (btn) { btn.disabled = true; btn.innerHTML = 'Verifying...'; }
 
             try {
-                const res  = await fetch(`${API_BASE}/auth/verify-otp`, {
+                const res  = await fetch(`${API_BASE}/verifyotp`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ internal_id: loginState.internalId, otp }),
@@ -387,7 +387,7 @@
             const otp      = document.getElementById('admin-otp').value.trim();
 
             if (loginState.adminStep === 'credentials') {
-                // Admin Step 1: email + password via /auth/login
+                // Admin Step 1: email + password via /login
                 // The "Root Identity" field is the admin email
                 if (!username) { errEl.classList.remove('hidden'); return; }
 
@@ -395,7 +395,7 @@
                 // Admin flow: username field = email, OTP field = password on step 1,
                 // then OTP field = actual OTP on step 2
                 try {
-                    const res  = await fetch(`${API_BASE}/auth/login`, {
+                    const res  = await fetch(`${API_BASE}/login`, {
                         method:  'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body:    JSON.stringify({ email: username, password: otp }),
@@ -426,7 +426,7 @@
             } else {
                 // Admin Step 2: verify OTP
                 try {
-                    const res  = await fetch(`${API_BASE}/auth/verify-otp`, {
+                    const res  = await fetch(`${API_BASE}/verifyotp`, {
                         method:  'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body:    JSON.stringify({ internal_id: loginState.adminInternalId, otp }),

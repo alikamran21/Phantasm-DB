@@ -288,7 +288,7 @@
 
     async function loadDoctorProfile() {
         try {
-            const res  = await fetch(`${API_BASE}/portal/doctor/profile`, { headers: authHeaders() });
+            const res  = await fetch(`${API_BASE}/doctorprofile`, { headers: authHeaders() });
             const data = await res.json();
             const nameEl = document.getElementById('header-doctor-name');
             if (nameEl) nameEl.textContent = data.full_name || data.username || 'Dr. Shadow';
@@ -297,7 +297,7 @@
 
     async function loadPatients() {
         try {
-            const res  = await fetch(`${API_BASE}/portal/doctor/patients`, { headers: authHeaders() });
+            const res  = await fetch(`${API_BASE}/patients`, { headers: authHeaders() });
             if (res.status === 401) { window.location.href = '/login.html'; return; }
             const data = await res.json();
             const patients = data.patients || [];
@@ -366,7 +366,7 @@
                 const noteText = document.querySelector('textarea[name="clinical_notes"]')?.value || '';
                 honeypotLog('DOCTOR_SUBMIT_NOTE', { patient_id: currentPatient?.id, note_len: noteText.length });
                 try {
-                    await fetch(`${API_BASE}/portal/doctor/notes`, {
+                    await fetch(`${API_BASE}/notes`, {
                         method: 'POST', headers: authHeaders(),
                         body: JSON.stringify({ patient_id: currentPatient?.id || 0, note_text: noteText }),
                     });

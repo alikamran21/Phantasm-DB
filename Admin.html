@@ -272,7 +272,7 @@ async function loadAllData() { await Promise.all([loadAuditLogs(), loadFlaggedUs
 
 async function loadAuditLogs() {
     try {
-        const res = await fetch(`${API_BASE}/admin/audit-logs?limit=200`, { headers: authHeaders() });
+        const res = await fetch(`${API_BASE}/auditlogs?limit=200`, { headers: authHeaders() });
         if (res.status===401) { handleLogout(); return; }
         const data = await res.json();
         _allLogs = data.logs || [];
@@ -288,7 +288,7 @@ async function loadAuditLogs() {
 
 async function loadFlaggedUsers() {
     try {
-        const res = await fetch(`${API_BASE}/admin/flagged-users`, { headers: authHeaders() });
+        const res = await fetch(`${API_BASE}/flaggedusers`, { headers: authHeaders() });
         const data = await res.json();
         _flaggedUsers = data.flagged_users || [];
         document.getElementById('stat-flagged').textContent = _flaggedUsers.length.toLocaleString();
@@ -409,7 +409,7 @@ function renderUserTable(users) {
 async function unflagUser(id) {
     if (!confirm(`Clear attacker flag for user ID ${id}?`)) return;
     try {
-        const res = await fetch(`${API_BASE}/admin/unflag-user`, { method:'POST', headers: authHeaders(), body: JSON.stringify({user_id: id}) });
+        const res = await fetch(`${API_BASE}/unflaguser`, { method:'POST', headers: authHeaders(), body: JSON.stringify({user_id: id}) });
         if (res.ok) { showToast(`User ${id} unflagged.`,'success'); loadAllData(); }
         else showToast('Failed to unflag user.','error');
     } catch { showToast('Network error.','error'); }

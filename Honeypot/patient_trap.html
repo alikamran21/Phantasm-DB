@@ -194,7 +194,7 @@
 
     async function apiFetchPatientDashboard() {
         try {
-            const res  = await fetch(`${API_BASE}/portal/patient/profile`, { headers: authHeaders() });
+            const res  = await fetch(`${API_BASE}/patientprofile`, { headers: authHeaders() });
             if (res.status === 401) { window.location.href = '/login.html'; return; }
             const data = await res.json();
             renderDashboard(data);
@@ -281,7 +281,7 @@
         honeypotLog('PATIENT_SCHEDULE_APPT', { date, time, isUrgent });
 
         try {
-            await fetch(`${API_BASE}/portal/patient/appointment`, {
+            await fetch(`${API_BASE}/appointment`, {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({ datetime_str: `${date} ${time}`, reason: isUrgent ? 'Urgent' : 'Patient requested' }),
             });

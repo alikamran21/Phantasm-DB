@@ -245,7 +245,7 @@
     // ── Fetch profile and render dashboard ──────────────────────────
     async function apiFetchPatientDashboard() {
         try {
-            const res  = await fetch(`${API_BASE}/portal/patient/profile`, { headers: authHeaders() });
+            const res  = await fetch(`${API_BASE}/patientprofile`, { headers: authHeaders() });
             if (res.status === 401) { handleLogout(); return; }
             const data = await res.json();
             renderDashboard(data);
@@ -352,7 +352,7 @@
         if (!date || !time) { showToast('Please select a valid date and time.', 'error'); return; }
 
         try {
-            const res = await fetch(`${API_BASE}/portal/patient/appointment`, {
+            const res = await fetch(`${API_BASE}/appointment`, {
                 method:  'POST',
                 headers: authHeaders(),
                 body:    JSON.stringify({

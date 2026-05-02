@@ -1,27 +1,5 @@
-# api/health.py
-
-import os as _os, sys as _sys
-_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'lib')
-for _p in [_lib, '/var/task/lib']:
-    if _os.path.isdir(_p) and _p not in _sys.path:
-        _sys.path.insert(0, _p)
-
-"""GET /api/health — simple liveness probe."""
-import json
-import os
-import sys
-
-
-from _handler_base import cors_headers, preflight
-
+from _shared import *
 
 def handler(request, context=None):
-    if request.method == "OPTIONS":
-        return preflight()
-
-    data = {"status": "ok", "service": "phantasm-db", "env": os.environ.get("APP_ENV", "production")}
-    return {
-        "statusCode": 200,
-        "headers": cors_headers("GET, OPTIONS"),
-        "body": json.dumps(data),
-    }
+    if request.method == "OPTIONS": return preflight()
+    return ok({"status": "ok", "service": "phantasm-db"})
