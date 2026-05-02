@@ -1,30 +1,27 @@
 {
   "version": 2,
-
   "rewrites": [
-    { "source": "/api/health",                     "destination": "/api/health.py" },
-    { "source": "/api/init-db",                    "destination": "/api/init-db.py" },
-    { "source": "/api/auth/login",                 "destination": "/api/auth/login.py" },
-    { "source": "/api/auth/lookup",                "destination": "/api/auth/lookup.py" },
-    { "source": "/api/auth/verify-otp",            "destination": "/api/auth/verify-otp.py" },
-    { "source": "/api/portal/doctor/patients",     "destination": "/api/portal/doctor/patients.py" },
-    { "source": "/api/portal/doctor/notes",        "destination": "/api/portal/doctor/notes.py" },
-    { "source": "/api/portal/doctor/profile",      "destination": "/api/portal/doctor/profile.py" },
-    { "source": "/api/portal/patient/profile",     "destination": "/api/portal/patient/profile.py" },
-    { "source": "/api/portal/patient/appointment", "destination": "/api/portal/patient/appointment.py" },
-    { "source": "/api/admin/audit-logs",           "destination": "/api/admin/audit-logs.py" },
-    { "source": "/api/admin/flagged-users",        "destination": "/api/admin/flagged-users.py" },
-    { "source": "/api/admin/unflag-user",          "destination": "/api/admin/unflag-user.py" },
-    { "source": "/",                               "destination": "/login.html" }
+    {
+      "source": "/",
+      "destination": "/login.html"
+    }
   ],
-
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin",  "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Authorization, Content-Type" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Authorization, Content-Type, X-Init-Secret"
+        }
       ]
     }
   ]
