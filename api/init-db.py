@@ -1,13 +1,15 @@
 # api/init-db.py
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'lib')
+for _p in [_lib, '/var/task/lib']:
+    if _os.path.isdir(_p) and _p not in _sys.path:
+        _sys.path.insert(0, _p)
+
 """
 POST /api/init-db
 Creates all DB tables and seeds the admin account.
 Protect with X-Init-Secret header. Call once after first Vercel deploy.
 """
-import os as _os, sys as _sys
-_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'lib')
-if _lib not in _sys.path:
-    _sys.path.insert(0, _lib)
 
 import asyncio, json, os, sys
 

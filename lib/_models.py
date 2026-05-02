@@ -1,4 +1,14 @@
 # api/_models.py
+import os as _os, sys as _sys
+# Add lib/ to path — works both locally and in Vercel (/var/task/lib)
+for _candidate in [
+    _os.path.dirname(_os.path.abspath(__file__)),          # local: lib/ itself
+    '/var/task/lib',                                        # Vercel production
+    _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'lib'),  # fallback
+]:
+    if _os.path.isdir(_candidate) and _candidate not in _sys.path:
+        _sys.path.insert(0, _candidate)
+
 """
 SQLAlchemy ORM — Full ERD implementation for Phantasm-DB / Serenity EHR.
 

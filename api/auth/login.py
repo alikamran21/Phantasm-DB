@@ -1,12 +1,14 @@
 # api/auth/login.py
+import os as _os, sys as _sys
+_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', 'lib')
+for _p in [_lib, '/var/task/lib']:
+    if _os.path.isdir(_p) and _p not in _sys.path:
+        _sys.path.insert(0, _p)
+
 """
 POST /api/auth/login  — Admin-only email+password login.
 Doctor/Patient use POST /api/auth/lookup instead.
 """
-import os as _os, sys as _sys
-_lib = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', 'lib')
-if _lib not in _sys.path:
-    _sys.path.insert(0, _lib)
 
 import asyncio
 import json
