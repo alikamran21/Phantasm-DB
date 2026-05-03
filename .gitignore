@@ -1,24 +1,5 @@
-# Vercel Phantasm-DB .gitignore
-
-# Secrets — NEVER commit
 .env
-.env.*
-!.env.example
-*.pem
-*.key
-
-# Python
 __pycache__/
-*.py[cod]
-*.so
+*.pyc
 .venv/
-venv/
-env/
-*.egg-info/
-
-# Vercel
 .vercel/
-
-# OS
-.DS_Store
-Thumbs.db
