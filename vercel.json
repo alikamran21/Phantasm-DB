@@ -1,13 +1,42 @@
 {
   "version": 2,
-  "headers": [
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin",  "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Authorization, Content-Type, X-Init-Secret" }
-      ]
+      "src": "api/*.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "Honeypot/*.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/health",        "dest": "/api/health.py"        },
+    { "src": "/api/initdb",        "dest": "/api/initdb.py"        },
+    { "src": "/api/login",         "dest": "/api/login.py"         },
+    { "src": "/api/lookup",        "dest": "/api/lookup.py"        },
+    { "src": "/api/verifyotp",     "dest": "/api/verifyotp.py"     },
+    { "src": "/api/patients",      "dest": "/api/patients.py"      },
+    { "src": "/api/notes",         "dest": "/api/notes.py"         },
+    { "src": "/api/doctorprofile", "dest": "/api/doctorprofile.py" },
+    { "src": "/api/patientprofile","dest": "/api/patientprofile.py"},
+    { "src": "/api/appointment",   "dest": "/api/appointment.py"   },
+    { "src": "/api/auditlogs",     "dest": "/api/auditlogs.py"     },
+    { "src": "/api/flaggedusers",  "dest": "/api/flaggedusers.py"  },
+    { "src": "/api/unflaguser",    "dest": "/api/unflaguser.py"    },
+    { "src": "/api/ping",          "dest": "/api/ping.py"          },
+    {
+      "src": "/(.*)",
+      "dest": "/$1",
+      "headers": {
+        "Access-Control-Allow-Origin":  "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Init-Secret"
+      }
     }
   ]
 }

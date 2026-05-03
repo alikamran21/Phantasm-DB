@@ -1,3 +1,4 @@
+# api/health.py — Vercel Python Serverless Function
 # api/health.py
 # Auto-generated — fully self-contained Vercel Python function
 
@@ -382,8 +383,9 @@ async def honeypot_gate(db, user, ip, ua, action, endpoint, payload=None):
                     is_honeypot=trap, is_malicious=trap)
     return trap
 
+
 # ============================================================
-# HANDLER
+# HANDLER — Vercel calls this for every request
 # ============================================================
 
 def handler(request, context=None):
