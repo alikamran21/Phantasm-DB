@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantasm-DB | Forensic Command</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-base: #020617; /* Slate 950 */
+            --bg-panel: #0f172a; /* Slate 900 */
+            --border-color: #1e293b; /* Slate 800 */
+            --accent-blue: #0ea5e9; /* Sky 500 */
+        }
+
+        body { 
+            background-color: var(--bg-base);
+            color: #94a3b8; 
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        .code-font { font-family: 'JetBrains Mono', monospace; }
+
+        .panel { 
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .panel-header {
+            background-color: rgba(2, 6, 23, 0.6);
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #f8fafc;
+        }
+
+        /* Clean Data Grid Tables */
+        .data-grid { width: 100%; border-collapse: collapse; }
+        .data-grid th { 
+            background-color: #020617; 
+            padding: 10px 16px; 
+            text-align: left; 
+            font-size: 10px; 
+            color: #64748b; 
+            text-transform: uppercase; 
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color); 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            white-space: nowrap;
+        }
+        .data-grid td { 
+            padding: 10px 16px; 
+            font-size: 12px; 
+            border-bottom: 1px solid rgba(30, 41, 59, 0.4); 
+            white-space: nowrap; 
+            color: #cbd5e1;
+        }
+        .data-grid tr:hover td { background-color: rgba(15, 23, 42, 0.8); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Refined Nav Tabs */
+        .nav-tab {
+            padding: 0 16px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover { color: #e2e8f0; background: rgba(255,255,255,0.02); }
+        .nav-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); background: rgba(14, 165, 233, 0.05); }
+
+        .view-section { display: none; height: 100%; }
+        .view-section.active { display: flex; }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Header Layout (No Squishing) -->
+    <header class="bg-[#0f172a] border-b border-[#1e293b] flex justify-between items-center shrink-0 z-20 h-14 overflow-x-auto overflow-y-hidden px-4 scrollbar-hide">
+        
+        <!-- Left Side: Logo & Tabs -->
+        <div class="flex items-center h-full shrink-0">
+            <div class="flex items-center gap-2 pr-4 shrink-0 border-r border-[#1e293b] h-full">
+                <div class="w-6 h-6 bg-sky-500/10 border border-sky-500/30 rounded flex items-center justify-center text-sky-400">
+                    <i class="fas fa-shield-alt text-xs"></i>
+                </div>
+                <h1 class="text-sm font-black text-white tracking-widest whitespace-nowrap">PHANTASM-DB</h1>
+            </div>
+            
+            <div class="flex h-full ml-2">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab active">
+                    <i class="fas fa-chart-line mr-2"></i> Threat Dashboard
+                </button>
+                <button onclick="switchTab('explorer')" id="tab-explorer" class="nav-tab">
+                    <i class="fas fa-database mr-2"></i> Postgres Explorer
+                </button>
+                <button onclick="switchTab('ledger')" id="tab-ledger" class="nav-tab">
+                    <i class="fas fa-stream mr-2"></i> Live Ledger
+                </button>
+            </div>
+        </div>
+        
+        <!-- Right Side: Actions -->
+        <div class="flex items-center gap-3 h-full shrink-0 pl-4 border-l border-[#1e293b]">
+            
+            <!-- Connection Status -->
+            <div id="connection-status" class="flex items-center gap-2 px-3 py-1 rounded bg-slate-800/50 border border-slate-700 whitespace-nowrap">
+                <div id="connection-indicator" class="w-2 h-2 bg-slate-500 rounded-full"></div>
+                <span id="connection-text" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Connecting</span>
+            </div>
+
+            <!-- Buttons -->
+            <button onclick="generateForensicReport()" id="btn-export" class="text-emerald-400 hover:bg-emerald-900/30 border border-emerald-900/50 transition text-xs font-bold flex items-center gap-2 px-3 py-1.5 rounded whitespace-nowrap">
+                <i id="export-btn-icon" class="fas fa-file-pdf"></i> <span id="export-btn-text">Export DB</span>
+            </button>
+            
+            <button onclick="forceSync()" class="text-slate-400 hover:text-sky-400 hover:bg-sky-900/20 transition text-xs font-semibold flex items-center gap-2 px-3 py-1.5 rounded whitespace-nowrap">
+                <i class="fas fa-sync-alt"></i> Sync
+            </button>
+            
+            <button onclick="window.location.href='login.html'" class="text-rose-400 hover:bg-rose-900/30 border border-rose-900/50 transition text-xs font-bold flex items-center gap-2 px-3 py-1.5 rounded whitespace-nowrap">
+                <i class="fas fa-power-off"></i> Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="flex-1 overflow-hidden p-6 bg-[#020617]">
+        
+        <!-- ========================================== -->
+        <!-- VIEW 1: THREAT DASHBOARD                   -->
+        <!-- ========================================== -->
+        <div id="view-dashboard" class="view-section active flex-col gap-6">
+            
+            <!-- Metrics -->
+            <div class="grid grid-cols-4 gap-6 shrink-0">
+                <div class="panel p-5 justify-center relative overflow-hidden border-t-2 border-t-slate-700">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Active Threats</p>
+                    <span class="text-3xl font-black text-white" id="metric-threats">0</span>
+                </div>
+                <div class="panel p-5 justify-center relative overflow-hidden border-t-2 border-t-sky-500">
+                    <p class="text-[10px] text-sky-400 font-bold uppercase tracking-widest mb-1">Queries Intercepted</p>
+                    <span class="text-3xl font-black text-white" id="metric-queries">0</span>
+                </div>
+                <div class="panel p-5 justify-center relative overflow-hidden border-t-2 border-t-rose-500">
+                    <p class="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Critical Alerts</p>
+                    <span class="text-3xl font-black text-white" id="metric-alerts">0</span>
+                </div>
+                <div class="panel p-5 justify-center relative overflow-hidden border-t-2 border-t-emerald-500">
+                    <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mb-1">Database Status</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <i id="sync-icon" class="fas fa-spinner fa-spin text-emerald-400"></i>
+                        <span id="sync-label" class="text-sm font-bold text-emerald-400 tracking-wide">WAITING</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-6 flex-1 min-h-0">
+                <div class="col-span-8 panel flex flex-col h-full">
+                    <div class="panel-header">
+                        <span><i class="fas fa-user-secret mr-2 text-sky-500"></i> Identified Threat Actors</span>
+                    </div>
+                    <div class="flex-1 overflow-auto bg-[#020617]/50">
+                        <table class="data-grid w-full">
+                            <thead><tr><th>Identity ID</th><th>IP Address</th><th>Threat Class</th><th>Risk Score</th><th>Total Attacks</th></tr></thead>
+                            <tbody id="dash-threats-body" class="code-font">
+                                <tr><td colspan="5" class="text-center py-12 text-slate-500"><i class="fas fa-network-wired opacity-50 mr-2"></i>Awaiting connection to PostgreSQL...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-span-4 panel flex flex-col h-full">
+                    <div class="panel-header">
+                        <span><i class="fas fa-bell mr-2 text-rose-500"></i> Real-Time Alerts</span>
+                    </div>
+                    <div class="flex-1 overflow-auto bg-[#020617]/50">
+                        <div class="p-4 space-y-3" id="dash-alerts-list">
+                            <div class="text-center py-12 text-slate-500 code-font text-xs"><i class="fas fa-satellite-dish opacity-50 mr-2"></i>Awaiting connection...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: POSTGRES ENTITY EXPLORER           -->
+        <!-- ========================================== -->
+        <div id="view-explorer" class="view-section gap-6">
+            
+            <div class="w-64 panel shrink-0 flex flex-col h-full">
+                <div class="panel-header">
+                    <span><i class="fas fa-database mr-2 text-slate-400"></i> ERD Entities</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1 code-font text-xs bg-[#020617]/50" id="entity-list">
+                    <!-- Entity links generated by JS -->
+                </div>
+            </div>
+
+            <div class="flex-1 panel flex flex-col min-w-0 h-full">
+                <div class="panel-header">
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-500 code-font normal-case">SELECT * FROM</span>
+                        <span class="text-sky-400 font-bold code-font text-sm bg-sky-900/20 px-2 py-0.5 rounded" id="active-table-name">Entity</span>
+                    </div>
+                    <span class="text-slate-500 code-font normal-case px-2 py-0.5 bg-slate-800 rounded" id="active-table-count">0 rows</span>
+                </div>
+                <div class="flex-1 overflow-auto bg-[#020617]/80">
+                    <table class="data-grid w-full">
+                        <thead id="explorer-thead">
+                            <tr><th class="text-center py-16 text-slate-600 border-none font-normal normal-case"><i class="fas fa-hand-pointer text-2xl mb-3 block opacity-50"></i>Select an entity to view PostgreSQL data.</th></tr>
+                        </thead>
+                        <tbody id="explorer-tbody" class="code-font text-slate-300">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW 3: LIVE FORENSIC LEDGER               -->
+        <!-- ========================================== -->
+        <div id="view-ledger" class="view-section">
+            <div class="panel flex-1 w-full flex flex-col h-full">
+                <div class="panel-header">
+                    <span><i class="fas fa-stream mr-2 text-emerald-500"></i> Forensic_Ledger Live Feed</span>
+                </div>
+                <div class="flex-1 overflow-auto bg-[#020617]/80">
+                    <table class="data-grid w-full">
+                        <thead>
+                            <tr>
+                                <th class="w-40">Timestamp</th>
+                                <th class="w-32">Log ID</th>
+                                <th class="w-24">Latency</th>
+                                <th>Raw Intercepted Query</th>
+                                <th class="w-32 text-center">Deceived Flag</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledger-table-body" class="code-font text-slate-300">
+                            <tr><td colspan="5" class="text-center py-16 text-slate-500"><i class="fas fa-satellite-dish opacity-50 text-2xl mb-3 block"></i>Awaiting stream connection from PostgreSQL...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+    <script>
+        // --- 1. Tab Navigation ---
+        let currentTab = 'dashboard';
+        let currentTable = null;
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + tabId).classList.add('active');
+
+            if(tabId === 'explorer') renderEntityList();
+            forceSync();
+        }
+
+        // --- 2. ERD Entities (The 10 Core Tables) ---
+        const CORE_10_ENTITIES = [
+            "Global_Identities", 
+            "Threat_Actors", 
+            "Forensic_Ledger", 
+            "Real_Time_Alerts", 
+            "Detection_Policies", 
+            "Shadow_Manifest", 
+            "Honey_Tokens", 
+            "Doctor", 
+            "Patient", 
+            "Production_Users"
+        ];
+
+        // --- 3. Backend Polling & State Management (STRICTLY BACKEND DEPENDENT) ---
+        let pollInterval;
+        const POLL_RATE_MS = 5000; 
+
+        function updateConnectionState(isConnected) {
+            const indicator = document.getElementById('connection-indicator');
+            const text = document.getElementById('connection-text');
+            const container = document.getElementById('connection-status');
+            const syncIcon = document.getElementById('sync-icon');
+            const syncLabel = document.getElementById('sync-label');
+
+            if (isConnected) {
+                indicator.className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
+                text.innerText = "Connected";
+                text.className = "text-[10px] text-emerald-400 font-bold uppercase tracking-widest";
+                container.className = "flex items-center gap-2 px-3 py-1 rounded bg-emerald-950/40 border border-emerald-900/60 transition-colors duration-300 whitespace-nowrap";
+                if(syncIcon) syncIcon.className = "fas fa-check-circle text-emerald-500";
+                if(syncLabel) { syncLabel.innerText = "SYNC: OK"; syncLabel.className = "text-sm font-bold text-emerald-400"; }
+            } else {
+                indicator.className = "w-2 h-2 bg-rose-500 rounded-full";
+                text.innerText = "Offline";
+                text.className = "text-[10px] text-rose-400 font-bold uppercase tracking-widest";
+                container.className = "flex items-center gap-2 px-3 py-1 rounded bg-rose-950/40 border border-rose-900/60 transition-colors duration-300 whitespace-nowrap";
+                if(syncIcon) syncIcon.className = "fas fa-exclamation-triangle text-rose-500";
+                if(syncLabel) { syncLabel.innerText = "OFFLINE"; syncLabel.className = "text-sm font-bold text-rose-400"; }
+            }
+        }
+
+        function forceSync() {
+            if(currentTab === 'dashboard') apiFetchDashboard();
+            if(currentTab === 'ledger') apiFetchLedger();
+            if(currentTab === 'explorer' && currentTable) apiFetchTableData(currentTable);
+        }
+
+        // --- 4. API Fetch Functions ---
+        
+        async function apiFetchDashboard() {
+            try {
+                const res = await fetch('/api/admin/dashboard');
+                if(!res.ok) throw new Error("Backend Error");
+                const data = await res.json();
+                updateConnectionState(true);
+                renderDashboard(data.threats || [], data.alerts || [], data.metrics || { active_threats: 0, total_queries: 0, critical_alerts: 0 });
+            } catch(e) {
+                updateConnectionState(false);
+                renderDashboard([], [], { active_threats: 0, total_queries: 0, critical_alerts: 0 });
+            }
+        }
+
+        function renderDashboard(threats, alerts, metrics) {
+            document.getElementById('metric-threats').innerText = metrics.active_threats;
+            document.getElementById('metric-queries').innerText = metrics.total_queries;
+            document.getElementById('metric-alerts').innerText = metrics.critical_alerts;
+
+            const tbody = document.getElementById('dash-threats-body');
+            if (threats.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500">No active threats detected or backend is offline.</td></tr>`;
+            } else {
+                tbody.innerHTML = threats.map(t => `
+                    <tr>
+                        <td class="text-sky-400 font-bold">${t.identity_id || 'N/A'}</td>
+                        <td>${t.ip_address || 'N/A'}</td>
+                        <td class="text-rose-400 font-bold">${t.threat_class || 'N/A'}</td>
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-rose-500" style="width: ${t.risk_score || 0}%"></div>
+                                </div>
+                                <span class="text-rose-500 font-bold">${t.risk_score || 0}</span>
+                            </div>
+                        </td>
+                        <td class="text-white">${t.total_attacks || 0}</td>
+                    </tr>
+                `).join('');
+            }
+
+            const alertsDiv = document.getElementById('dash-alerts-list');
+            if (alerts.length === 0) {
+                alertsDiv.innerHTML = `<div class="text-center py-12 text-slate-500 code-font text-xs">No active alerts.</div>`;
+            } else {
+                alertsDiv.innerHTML = alerts.map(a => {
+                    const color = a.escalation_level === 'CRITICAL' ? 'text-rose-500 border-l-rose-500 border-rose-900/40 bg-rose-950/10' : 'text-orange-400 border-l-orange-400 border-orange-900/40 bg-orange-950/10';
+                    return `
+                    <div class="border p-3 rounded shadow-sm border-l-4 ${color} mb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-bold text-xs ${color.split(' ')[0]}">${a.escalation_level || 'ALERT'}</span>
+                            <span class="text-slate-500 text-[10px] code-font">${a.alert_id || 'N/A'}</span>
+                        </div>
+                        <div class="text-slate-300 text-xs mb-2">${a.rule_triggered || 'Suspicious Activity Detected'}</div>
+                        <div class="text-slate-500 text-[10px] code-font bg-black/40 p-1.5 rounded inline-block">Trigger Log: ${a.log_id || 'N/A'}</div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        async function apiFetchLedger() {
+            try {
+                const res = await fetch('/api/admin/ledger');
+                if(!res.ok) throw new Error("Backend Error");
+                const logs = await res.json();
+                updateConnectionState(true);
+                renderLedger(logs || []);
+            } catch(e) {
+                updateConnectionState(false);
+                renderLedger([]); 
+            }
+        }
+
+        function renderLedger(logs) {
+            const tbody = document.getElementById('ledger-table-body');
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-16 text-slate-500">Backend Offline or Ledger is Empty</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => `
+                <tr>
+                    <td class="text-slate-500">${l.timestamp || '-'}</td>
+                    <td class="text-sky-400">${l.log_id || '-'}</td>
+                    <td class="text-slate-400">${l.duration_ms || 0}ms</td>
+                    <td class="text-white font-bold whitespace-normal break-all">${(l.raw_query || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+                    <td class="text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${String(l.was_deceived).toUpperCase() === 'TRUE' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-500'}">${String(l.was_deceived).toUpperCase()}</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEntityList() {
+            const list = document.getElementById('entity-list');
+            list.innerHTML = CORE_10_ENTITIES.map(entity => `
+                <button onclick="apiFetchTableData('${entity}')" id="btn-tbl-${entity}" class="w-full text-left px-3 py-2.5 rounded text-slate-400 hover:text-sky-400 hover:bg-sky-900/20 transition flex items-center justify-between border border-transparent">
+                    <span><i class="fas fa-table mr-2 opacity-40 text-[10px]"></i> ${entity}</span>
+                    <i class="fas fa-chevron-right text-[10px] opacity-0 group-hover:opacity-100 transition"></i>
+                </button>
+            `).join('');
+        }
+
+        async function apiFetchTableData(tableName) {
+            currentTable = tableName;
+            
+            document.querySelectorAll('#entity-list button').forEach(b => {
+                b.classList.remove('bg-sky-900/40', 'text-sky-400', 'border-sky-800/50');
+                b.classList.add('text-slate-400', 'border-transparent');
+            });
+            const activeBtn = document.getElementById(`btn-tbl-${tableName}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'border-transparent');
+                activeBtn.classList.add('bg-sky-900/40', 'text-sky-400', 'border-sky-800/50');
+            }
+            
+            document.getElementById('active-table-name').innerText = tableName;
+            const thead = document.getElementById('explorer-thead');
+            const tbody = document.getElementById('explorer-tbody');
+            tbody.innerHTML = `<tr><td colspan="100%" class="text-center py-16 text-slate-500"><i class="fas fa-circle-notch fa-spin text-2xl mb-3 block text-sky-500"></i> Querying PostgreSQL...</td></tr>`;
+            
+            try {
+                const res = await fetch(`/api/admin/table/${tableName}`);
+                if(!res.ok) throw new Error("Backend Error");
+                const rows = await res.json();
+                updateConnectionState(true);
+                renderTableGrid(rows || []);
+            } catch(e) {
+                updateConnectionState(false);
+                thead.innerHTML = `<tr><th class="text-center py-16 text-rose-500 border-none font-normal normal-case"><i class="fas fa-exclamation-triangle text-2xl mb-3 block"></i> Connection Error. Backend is offline.</th></tr>`;
+                tbody.innerHTML = '';
+                document.getElementById('active-table-count').innerText = `0 rows`;
+            }
+        }
+
+        function renderTableGrid(rows) {
+            const thead = document.getElementById('explorer-thead');
+            const tbody = document.getElementById('explorer-tbody');
+            
+            document.getElementById('active-table-count').innerText = `${rows.length} rows`;
+
+            if(rows.length === 0) {
+                thead.innerHTML = `<tr><th class="text-center py-16 text-slate-600 border-none font-normal normal-case">Table exists but contains 0 rows.</th></tr>`;
+                tbody.innerHTML = '';
+                return;
+            }
+
+            const headers = Object.keys(rows[0]);
+            thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            tbody.innerHTML = rows.map(row => `
+                <tr>
+                    ${headers.map(h => `<td class="max-w-xs truncate" title="${row[h]}">${row[h] !== null && row[h] !== undefined ? row[h] : '<span class="text-slate-600 italic">null</span>'}</td>`).join('')}
+                </tr>
+            `).join('');
+        }
+
+        // --- 5. FULL DATABASE PDF EXPORT ---
+        async function generateForensicReport() {
+            const btnText = document.getElementById('export-btn-text');
+            const btnIcon = document.getElementById('export-btn-icon');
+            const originalText = btnText.innerText;
+            
+            btnText.innerText = "Compiling PDF...";
+            btnIcon.className = "fas fa-circle-notch fa-spin";
+            
+            try {
+                window.jsPDF = window.jspdf.jsPDF;
+                const doc = new jsPDF('landscape'); 
+
+                doc.setFontSize(22);
+                doc.setTextColor(15, 23, 42); 
+                doc.text("Phantasm-DB Schema Export", 14, 22);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100, 116, 139); 
+                doc.text(`Forensic Report Generated: ${new Date().toLocaleString()}`, 14, 30);
+                
+                let currentY = 45;
+
+                for (let i = 0; i < CORE_10_ENTITIES.length; i++) {
+                    const tableName = CORE_10_ENTITIES[i];
+                    let rows = [];
+
+                    // Try fetching from real backend
+                    try {
+                        const res = await fetch(`/api/admin/table/${tableName}`);
+                        if(res.ok) rows = await res.json();
+                    } catch(e) {
+                        rows = []; // Ensure it fails gracefully if offline
+                    }
+
+                    doc.setFontSize(14);
+                    doc.setTextColor(14, 165, 233); 
+                    doc.text(`Entity: ${tableName} (${rows.length} records)`, 14, currentY);
+                    currentY += 6;
+
+                    if (rows.length > 0) {
+                        const headers = Object.keys(rows[0]);
+                        const data = rows.map(r => headers.map(h => {
+                            let val = r[h];
+                            return val !== null && val !== undefined ? String(val) : 'NULL';
+                        }));
+
+                        doc.autoTable({
+                            startY: currentY,
+                            head: [headers],
+                            body: data,
+                            theme: 'grid',
+                            headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+                            styles: { fontSize: 8, cellPadding: 4, textColor: [51, 65, 85] },
+                            alternateRowStyles: { fillColor: [248, 250, 252] },
+                            margin: { left: 14, right: 14 }
+                        });
+                        
+                        currentY = doc.lastAutoTable.finalY + 15;
+                    } else {
+                        doc.setFontSize(10);
+                        doc.setTextColor(100, 116, 139);
+                        doc.text("Data unavailable or table empty.", 14, currentY + 5);
+                        currentY += 15;
+                    }
+
+                    if (currentY > 160 && i !== CORE_10_ENTITIES.length - 1) {
+                        doc.addPage();
+                        currentY = 20;
+                    }
+                }
+
+                const pdfBlob = doc.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                
+                const a = document.createElement('a');
+                a.href = pdfUrl;
+                a.download = `Phantasm_DB_Export_${new Date().toISOString().slice(0,10)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(pdfUrl);
+
+                showToast("Database report exported successfully.", "success");
+            } catch(e) {
+                console.error("PDF Engine Error:", e);
+                showToast("Error compiling PDF. Ensure backend is active.", "error");
+            } finally {
+                btnText.innerText = originalText;
+                btnIcon.className = "fas fa-file-pdf";
+            }
+        }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const icon = type === 'error' ? '<i class="fas fa-exclamation-circle text-rose-500"></i>' : '<i class="fas fa-check-circle text-emerald-500"></i>';
+            const bg = type === 'error' ? 'bg-rose-50 border border-rose-200 text-rose-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800';
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-enter p-4 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold ${bg}`;
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Initialize Engine ---
+        document.addEventListener("DOMContentLoaded", () => {
+            forceSync();
+            pollInterval = setInterval(forceSync, POLL_RATE_MS);
+        });
+
+    </script>
+</body>
+</html>
