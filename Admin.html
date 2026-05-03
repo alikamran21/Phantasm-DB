@@ -236,7 +236,7 @@
 <script>
 const API_BASE = '/api';
 const token = sessionStorage.getItem('phantasm_token');
-if (!token || sessionStorage.getItem('phantasm_role') !== 'admin') { sessionStorage.clear(); window.location.href = 'login.html'; }
+if (!token || sessionStorage.getItem('phantasm_role') !== 'admin') { sessionStorage.clear(); window.location.href = 'index.html'; }
 
 function authHeaders() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }; }
 
@@ -415,7 +415,7 @@ async function unflagUser(id) {
     } catch { showToast('Network error.','error'); }
 }
 
-function handleLogout() { sessionStorage.clear(); window.location.href='login.html'; }
+function handleLogout() { sessionStorage.clear(); window.location.href='index.html'; }
 
 function showToast(msg, type='success') {
     const colors={success:'bg-emerald-900/80 border-emerald-700/50 text-emerald-300',error:'bg-red-900/80 border-red-700/50 text-red-300'};

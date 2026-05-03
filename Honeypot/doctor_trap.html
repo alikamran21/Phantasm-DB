@@ -50,7 +50,7 @@
                 <p class="text-sm font-semibold text-slate-700 leading-tight" id="header-doctor-name">Loading Doctor...</p>
                 <p class="text-[10px] uppercase font-bold text-teal-500 tracking-wider">Clinical Psychiatry</p>
             </div>
-            <button onclick="window.location.href='login.html'" class="w-10 h-10 bg-white hover:bg-rose-50 hover:text-rose-500 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 shadow-sm transition-all duration-300" title="Secure Logout">
+            <button onclick="window.location.href='index.html'" class="w-10 h-10 bg-white hover:bg-rose-50 hover:text-rose-500 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 shadow-sm transition-all duration-300" title="Secure Logout">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
@@ -272,7 +272,7 @@
     const API_BASE = '/api';
     const token    = sessionStorage.getItem('phantasm_token');
 
-    if (!token) window.location.href = '/login.html';
+    if (!token) window.location.href = '/index.html';
 
     function authHeaders() {
         return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -298,7 +298,7 @@
     async function loadPatients() {
         try {
             const res  = await fetch(`${API_BASE}/patients`, { headers: authHeaders() });
-            if (res.status === 401) { window.location.href = '/login.html'; return; }
+            if (res.status === 401) { window.location.href = '/index.html'; return; }
             const data = await res.json();
             const patients = data.patients || [];
             renderTable(patients);
