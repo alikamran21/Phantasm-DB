@@ -23,7 +23,6 @@
         .soft-shadow {
             box-shadow: 0 10px 40px -10px rgba(13, 148, 136, 0.08);
         }
-
         /* Toast Animation */
         @keyframes slideUp {
             from { transform: translateY(100%); opacity: 0; }
@@ -73,7 +72,7 @@
         <!-- MAIN CONTENT -->
         <div class="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-teal-50/40 via-slate-50 to-emerald-50/20 relative" id="main-dashboard-container">
             <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-100/30 rounded-full blur-[100px] pointer-events-none"></div>
-
+            
             <div id="main-dashboard" class="max-w-4xl mx-auto bg-white rounded-3xl soft-shadow border border-slate-100 p-8 relative z-10">
                 
                 <div class="flex justify-between items-start border-b border-slate-50 pb-6 mb-6">
@@ -117,10 +116,9 @@
                         <i class="fas fa-clipboard-list text-teal-400"></i> Daily Treatment Plan
                     </h3>
                     
-                    <form action="/api/patient/update-tasks" method="POST" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <form id="tasks-form" onsubmit="handleSaveTasks(event)" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                         
                         <div id="dynamic-task-list" class="space-y-3">
-                            <!-- Pure Placeholder: Waits for Python Backend -->
                             <div class="p-8 text-center text-slate-400" id="tasks-empty-state">
                                 <i class="fas fa-spinner fa-spin text-2xl mb-3 text-teal-200"></i>
                                 <p class="text-sm font-medium">Fetching treatment plan from provider...</p>
@@ -137,6 +135,7 @@
                         </div>
                     </form>
                 </div>
+
             </div>
         </div>
     </div>
@@ -166,12 +165,11 @@
                     <input type="checkbox" id="urgent-check" class="w-5 h-5 text-rose-500 border-rose-200 rounded focus:ring-rose-400 cursor-pointer transition-colors">
                     <label for="urgent-check" class="text-xs font-bold text-rose-700 cursor-pointer">Mark as Urgent / Crisis Booking</label>
                 </div>
-
                 <div class="pt-6 flex flex-col gap-3">
-                    <button type="button" onclick="apiScheduleAppt()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow-lg shadow-orange-200 transition-all">Request New / Delay Appt</button>
+                    <button type="button" onclick="handleScheduleAppt()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-full shadow-lg shadow-orange-200 transition-all">Request New / Delay Appt</button>
                     <div class="flex gap-3">
                         <button type="button" onclick="toggleModal('manage-appt-modal', false)" class="flex-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-full transition-colors">Close</button>
-                        <button type="button" onclick="apiCancelAppt()" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-full transition-colors shadow-sm">Cancel Appt</button>
+                        <button type="button" onclick="handleCancelAppt()" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-full transition-colors shadow-sm">Cancel Appt</button>
                     </div>
                 </div>
             </div>
@@ -181,8 +179,9 @@
     <!-- ENGINE -->
     <script>
     // ================================================================
-    // Phantasm-DB | Patient Portal — Full Backend Integration
+    // Phantasm-DB | Patient Portal - Full Backend Integration
     // ================================================================
+    
     const API_BASE = '/api';
     const token    = sessionStorage.getItem('phantasm_token');
 
@@ -194,16 +193,12 @@
 
     let currentTasks = [];
 
-    // ── Init ────────────────────────────────────────────────────────
+    // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
         apiFetchPatientDashboard();
-
-        // Wire save button
-        const saveBtn = document.getElementById('save-btn');
-        if (saveBtn) saveBtn.closest('form').addEventListener('submit', apiSaveTasks);
     });
 
-    // ── View Helpers ────────────────────────────────────────────────
+    // --- View Helpers ---
     function toggleModal(id, show) {
         const modal = document.getElementById(id);
         if (show) {
@@ -220,15 +215,17 @@
 
     function showToast(msg, type = 'success') {
         const container = document.getElementById('toast-container');
-        const icon = type === 'success'
-            ? '<i class="fas fa-check-circle text-emerald-500"></i>'
+        const icon = type === 'success' 
+            ? '<i class="fas fa-check-circle text-emerald-500"></i>' 
             : '<i class="fas fa-exclamation-circle text-rose-500"></i>';
-        const bg = type === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+        const bg = type === 'success' 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
             : 'bg-rose-50 border-rose-200 text-rose-800';
+        
         const toast = document.createElement('div');
         toast.className = `toast-enter p-4 rounded-xl border shadow-lg flex items-center gap-3 text-sm font-bold ${bg}`;
         toast.innerHTML = `${icon} ${msg}`;
+        
         container.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = '0';
@@ -242,94 +239,114 @@
         window.location.href = 'index.html';
     }
 
-    // ── Fetch profile and render dashboard ──────────────────────────
+    // --- Fetch profile and render dashboard ---
     async function apiFetchPatientDashboard() {
         try {
             const res  = await fetch(`${API_BASE}/patientprofile`, { headers: authHeaders() });
             if (res.status === 401) { handleLogout(); return; }
             const data = await res.json();
             renderDashboard(data);
+            fetchTasks(); // Fetch live tasks from DB
         } catch (err) {
             console.warn('Backend not connected:', err);
             showToast('Unable to connect to server.', 'error');
-            document.getElementById('pat-status-badge').innerHTML =
+            document.getElementById('pat-status-badge').innerHTML = 
                 '<i class="fas fa-wifi text-slate-400 mr-1"></i> Offline';
             const emptyState = document.getElementById('tasks-empty-state');
-            if (emptyState) emptyState.innerHTML =
+            if (emptyState) emptyState.innerHTML = 
                 '<i class="fas fa-exclamation-triangle text-2xl mb-3 text-rose-300"></i>' +
                 '<p class="text-sm font-medium">Server Offline. Cannot load tasks.</p>';
+        }
+    }
+
+    async function fetchTasks() {
+        try {
+            const res = await fetch(`${API_BASE}/tasks`, { headers: authHeaders() });
+            const data = await res.json();
+            
+            const tasks = data.tasks || [
+                { id: '1', task_title: 'Morning Mindfulness (10 min)', task_description: 'Guided breathing exercise.', is_done: false },
+                { id: '2', task_title: 'Medication Log', task_description: 'Confirm morning medication taken.', is_done: false },
+                { id: '3', task_title: 'Mood Journal Entry', task_description: 'Rate mood 1-10 and add a brief note.', is_done: false },
+            ];
+            
+            currentTasks = tasks;
+            
+            const emptyState = document.getElementById('tasks-empty-state');
+            if (emptyState) emptyState.remove();
+            
+            const taskList = document.getElementById('dynamic-task-list');
+            if (!taskList) return;
+            
+            taskList.innerHTML = '';
+            if (!tasks.length) {
+                taskList.innerHTML = `<div class="p-8 text-center text-slate-400">
+                    <i class="fas fa-check-double text-2xl mb-3 text-teal-200"></i>
+                    <p class="text-sm font-medium">No tasks assigned for today.</p>
+                </div>`;
+                return;
+            }
+            
+            tasks.forEach(task => {
+                const checked = task.is_done ? 'checked' : '';
+                taskList.innerHTML += `
+                    <label class="flex items-start gap-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl cursor-pointer hover:border-teal-300 transition-all shadow-sm group">
+                        <div class="mt-0.5">
+                            <input type="checkbox" id="chk-${task.task_id}" value="${task.task_id}" ${checked}
+                                class="w-5 h-5 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer task-checkbox">
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-700 text-sm group-hover:text-teal-600 transition-colors">${task.task_title}</h4>
+                            <p class="text-xs text-slate-500 font-medium mt-1">${task.task_description || ''}</p>
+                        </div>
+                    </label>`;
+            });
+        } catch (_) {
+            console.error("Failed to load tasks");
         }
     }
 
     function renderDashboard(data) {
         const firstName = (data.full_name || data.name || 'Patient').split(' ')[0];
         document.getElementById('pat-welcome-name').innerText = `Welcome Back, ${firstName}`;
-        document.getElementById('pat-mrn').innerText    = data.mrn   || '—';
+        document.getElementById('pat-mrn').innerText    = data.mrn   || '---';
         document.getElementById('pat-diag').innerText   = data.diagnosis || 'Evaluation Pending';
         document.getElementById('pat-rx').innerText     = (data.medications || []).join(', ') || 'None Active';
         document.getElementById('pat-appt').innerText   = data.next_appointment || 'No Appointment Scheduled';
         document.getElementById('pat-provider').innerText = data.provider || 'Unassigned';
-
+        
         const badge    = document.getElementById('pat-status-badge');
         const isCrit   = data.status === 'CRITICAL';
         badge.className = `px-4 py-1.5 text-xs font-bold rounded-full border shadow-sm ${
             isCrit ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
         }`;
         badge.innerHTML = `<i class="fas ${isCrit ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-1"></i> ${data.status || 'Active'}`;
-
-        // Render tasks — backend may send tasks or we show a default set
-        const tasks = data.tasks || [
-            { id: 1, title: 'Morning Mindfulness (10 min)', desc: 'Guided breathing exercise.', done: false },
-            { id: 2, title: 'Medication Log', desc: 'Confirm morning medication taken.', done: false },
-            { id: 3, title: 'Mood Journal Entry', desc: 'Rate mood 1–10 and add a brief note.', done: false },
-        ];
-        currentTasks = tasks;
-
-        // Remove the spinner empty state
-        const emptyState = document.getElementById('tasks-empty-state');
-        if (emptyState) emptyState.remove();
-
-        const taskList = document.getElementById('dynamic-task-list');
-        if (!taskList) return;
-        taskList.innerHTML = '';
-
-        if (!tasks.length) {
-            taskList.innerHTML = `<div class="p-8 text-center text-slate-400">
-                <i class="fas fa-check-double text-2xl mb-3 text-teal-200"></i>
-                <p class="text-sm font-medium">No tasks assigned for today.</p>
-            </div>`;
-            return;
-        }
-
-        tasks.forEach(task => {
-            taskList.innerHTML += `
-                <label class="flex items-start gap-4 p-4 bg-slate-50/50 border border-slate-200 rounded-xl cursor-pointer hover:border-teal-300 transition-all shadow-sm group">
-                    <div class="mt-0.5">
-                        <input type="checkbox" id="chk-${task.id}" ${task.done ? 'checked' : ''}
-                            class="w-5 h-5 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer">
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-bold text-slate-700 text-sm group-hover:text-teal-600 transition-colors">${task.title}</h4>
-                        <p class="text-xs text-slate-500 font-medium mt-1">${task.desc}</p>
-                    </div>
-                </label>`;
-        });
     }
 
-    async function apiSaveTasks(e) {
+    // --- Actions ---
+    async function handleSaveTasks(e) {
         e.preventDefault();
         const btn     = document.getElementById('save-btn');
         const ogText  = btn ? btn.innerHTML : '';
         if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Syncing...';
 
-        const updatedTasks = currentTasks.map(task => ({
-            id:   task.id,
-            done: document.getElementById(`chk-${task.id}`)?.checked ?? task.done,
-        }));
+        // Find all checked boxes
+        const checkedBoxes = Array.from(document.querySelectorAll('.task-checkbox:checked'));
+        const checkedIds = checkedBoxes.map(cb => cb.value);
 
         try {
-            // Patient portal doesn't have a dedicated tasks endpoint yet — log the save locally
-            showToast('Treatment plan synced with provider.');
+            const res = await fetch(`${API_BASE}/tasks`, {
+                method:  'POST',
+                headers: authHeaders(),
+                body:    JSON.stringify({ completed_task_ids: checkedIds }),
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                showToast('Treatment plan synced with provider.');
+            } else {
+                showToast(data.detail || 'Failed to sync tasks', 'error');
+            }
         } catch (_) {
             showToast('Server error: Could not sync progress.', 'error');
         } finally {
@@ -337,41 +354,70 @@
         }
     }
 
-    async function apiCancelAppt() {
+    async function handleCancelAppt() {
         if (!confirm('Cancel this appointment?')) return;
-        document.getElementById('pat-appt').innerText = 'No Appointment Scheduled';
-        toggleModal('manage-appt-modal', false);
-        showToast('Appointment cancelled.');
+        
+        try {
+            const res = await fetch(`${API_BASE}/appointment`, {
+                method:  'POST',
+                headers: authHeaders(),
+                body:    JSON.stringify({ action: 'cancel', appt_id: 'latest' }), // Pass logic down to your backend
+            });
+            
+            if (res.ok) {
+                document.getElementById('pat-appt').innerText = 'No Appointment Scheduled';
+                toggleModal('manage-appt-modal', false);
+                showToast('Appointment cancelled.');
+            } else {
+                showToast('Failed to cancel appointment.', 'error');
+            }
+        } catch (_) {
+             showToast('Network error.', 'error');
+        }
     }
 
-    async function apiScheduleAppt() {
+    async function handleScheduleAppt() {
         const date     = document.getElementById('new-date').value;
         const time     = document.getElementById('new-time').value;
         const isUrgent = document.getElementById('urgent-check').checked;
-
+        
         if (!date || !time) { showToast('Please select a valid date and time.', 'error'); return; }
-
+        
         try {
             const res = await fetch(`${API_BASE}/appointment`, {
                 method:  'POST',
                 headers: authHeaders(),
                 body:    JSON.stringify({
-                    datetime_str: `${date} ${time}`,
-                    reason: isUrgent ? 'Urgent / Crisis Booking' : 'Patient requested',
+                    action: 'schedule',
+                    scheduled_at: `${date}T${time}`,
+                    is_urgent: isUrgent
                 }),
             });
+            
+            if (res.ok) {
+                const dateObj       = new Date(date);
+                const formattedDate = dateObj.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).replace(/ /g, '-');
+                
+                // Format time correctly
+                let timeParts = time.split(':');
+                let hours = parseInt(timeParts[0]);
+                let minutes = timeParts[1];
+                let ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                let formattedTime = hours + ':' + minutes + ' ' + ampm;
 
-            const dateObj       = new Date(date);
-            const formattedDate = dateObj.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).replace(/ /g, '-');
-            const label         = isUrgent ? `${formattedDate} @ ${time} (URGENT)` : `${formattedDate} @ ${time}`;
-
-            document.getElementById('pat-appt').innerText = label;
-            toggleModal('manage-appt-modal', false);
-            showToast('Appointment schedule requested.');
+                const label = isUrgent ? `${formattedDate} @ ${formattedTime} (URGENT)` : `${formattedDate} @ ${formattedTime}`;
+                document.getElementById('pat-appt').innerText = label;
+                toggleModal('manage-appt-modal', false);
+                showToast('Appointment schedule requested.');
+            } else {
+                showToast('Failed to schedule appointment.', 'error');
+            }
         } catch (_) {
             showToast('Server error: Scheduling failed.', 'error');
         }
     }
-</script>
+    </script>
 </body>
 </html>

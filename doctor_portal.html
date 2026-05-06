@@ -10,7 +10,6 @@
     <!-- PDF Generation Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
         
@@ -20,7 +19,6 @@
             --border-color: #1e293b; /* Slate 800 */
             --accent-blue: #0ea5e9; /* Sky 500 */
         }
-
         body { font-family: 'Inter', sans-serif; overflow: hidden; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -133,11 +131,6 @@
                                     </div>
                                     <h3 class="text-slate-700 font-bold text-lg mb-1">Awaiting Database Sync</h3>
                                     <p class="text-sm text-slate-400 max-w-sm mx-auto">Patient records will populate here automatically once the Python middleware connects to PostgreSQL.</p>
-                                    
-                                    <!-- Dev placeholder button to simulate clicking a record -->
-                                    <button onclick="switchView('detail')" class="mt-6 text-xs font-bold text-teal-600 bg-teal-50 px-4 py-2 rounded-full hover:bg-teal-100 transition">
-                                        Simulate Record Open (Dev)
-                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -164,12 +157,8 @@
                         <button type="button" onclick="generatePatientReport()" id="export-patient-btn" class="px-4 py-1.5 bg-white text-emerald-600 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-50 transition-colors shadow-sm">
                             <i id="export-patient-icon" class="fas fa-file-pdf mr-1"></i> <span id="export-patient-text">Export PDF</span>
                         </button>
-
-                        <!-- Backend Optimized Delete Form -->
-                        <form action="/api/patient/delete" method="POST" class="inline">
-                            <input type="hidden" name="patient_mrn" value="DYNAMIC_ID">
-                            <button type="submit" class="px-4 py-1.5 bg-white text-rose-500 text-xs font-bold rounded-full border border-rose-100 hover:bg-rose-50 transition-colors shadow-sm" onclick="return confirm('Are you sure you want to unregister and permanently delete this record?')"><i class="fas fa-user-minus mr-1"></i> Unregister</button>
-                        </form>
+                        <!-- Delete via JS fetch (sends JWT) -->
+                        <button type="button" onclick="deletePatient()" class="px-4 py-1.5 bg-white text-rose-500 text-xs font-bold rounded-full border border-rose-100 hover:bg-rose-50 transition-colors shadow-sm"><i class="fas fa-user-minus mr-1"></i> Unregister</button>
                     </div>
                 </div>
 
@@ -186,15 +175,12 @@
                     </div>
                     <div class="flex gap-2 items-center">
                         <button onclick="toggleModal('appt-modal', true)" class="text-xs font-bold bg-white text-slate-600 px-4 py-2 rounded-full border border-slate-100 hover:border-slate-300 transition-colors shadow-sm"><i class="fas fa-clock mr-1"></i> Schedule / Delay</button>
-                        <form action="/api/appointment/cancel" method="POST" class="inline">
-                            <input type="hidden" name="patient_mrn" value="DYNAMIC_ID">
-                            <button type="submit" onclick="return confirm('Cancel this appointment?')" class="text-xs font-bold bg-rose-50 text-rose-600 px-4 py-2 rounded-full border border-rose-100 hover:bg-rose-100 transition-colors shadow-sm"><i class="fas fa-times mr-1"></i> Cancel Appt</button>
-                        </form>
+                        <button type="button" onclick="cancelAppointment()" class="text-xs font-bold bg-rose-50 text-rose-600 px-4 py-2 rounded-full border border-rose-100 hover:bg-rose-100 transition-colors shadow-sm"><i class="fas fa-times mr-1"></i> Cancel Appt</button>
                     </div>
                 </div>
 
-                <!-- Backend Form Submission -->
-                <form action="/api/patient/update" method="POST" enctype="multipart/form-data" class="space-y-8">
+                <!-- Patient update - submitted via JS fetch -->
+                <form id="patient-update-form" class="space-y-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1">
@@ -233,7 +219,6 @@
                         </button>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>
@@ -250,10 +235,14 @@
             <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Register Patient</h2>
             <p class="text-sm text-slate-500 mb-6">Create a new secure record in the database.</p>
             
-            <form action="/api/patient/add" method="POST" class="space-y-5">
+            <form id="add-patient-form" class="space-y-5">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
                     <input type="text" name="new_name" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none text-sm font-semibold text-slate-700 transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Email Address *</label>
+                    <input type="email" name="new_email" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 outline-none text-sm font-semibold text-slate-700 transition-all">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Initial Diagnosis</label>
@@ -279,7 +268,7 @@
             <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Encounter Schedule</h2>
             <p class="text-sm text-slate-500 mb-6">Schedule or delay session timing.</p>
             
-            <form action="/api/appointment/update" method="POST" class="space-y-5">
+            <form id="appt-form" class="space-y-5">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
                     <input type="date" name="appt_date" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-orange-400 focus:ring-4 focus:ring-orange-50 outline-none text-sm font-semibold text-slate-700 transition-all">
@@ -302,8 +291,9 @@
 
     <script>
     // ================================================================
-    // Phantasm-DB | Doctor Portal — Full Backend Integration
+    // Phantasm-DB | Doctor Portal - Full Backend Integration
     // ================================================================
+    
     const API_BASE = '/api';
     const token    = sessionStorage.getItem('phantasm_token');
 
@@ -319,7 +309,7 @@
         window.location.href = 'index.html';
     }
 
-    // ── UI Helpers ──────────────────────────────────────────────────
+    // --- UI Helpers ---
     function toggleModal(id, show) {
         const modal = document.getElementById(id);
         if (show) modal.classList.remove('hidden');
@@ -330,7 +320,7 @@
         const overview = document.getElementById('overview-view');
         const detail   = document.getElementById('detail-view');
         const navBtn   = document.getElementById('nav-overview');
-
+        
         if (view === 'overview') {
             overview.classList.remove('hidden');
             detail.classList.add('hidden');
@@ -348,7 +338,7 @@
         }
     }
 
-    // ── Load Patient List on page load ──────────────────────────────
+    // --- Load Patient List on page load ---
     document.addEventListener('DOMContentLoaded', () => {
         loadPatients();
         loadDoctorProfile();
@@ -384,7 +374,7 @@
     function renderPatientTable(patients) {
         const tbody = document.querySelector('tbody');
         if (!tbody) return;
-
+        
         if (!patients.length) {
             tbody.innerHTML = `<tr><td colspan="6" class="p-16 text-center text-slate-400 text-sm">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-50 text-teal-400 mb-4"><i class="fas fa-users text-2xl"></i></div>
@@ -394,15 +384,16 @@
             return;
         }
 
+        // Updated rendering correctly reading from backend keys
         tbody.innerHTML = patients.map((p, i) => `
             <tr class="hover:bg-teal-50/30 transition-colors cursor-pointer" onclick="openPatientDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})">
                 <td class="p-5">
                     <p class="font-bold text-slate-700">${p.full_name || 'Unknown'}</p>
-                    <p class="text-[11px] text-slate-400 font-mono mt-0.5">${p.mrn || '—'}</p>
+                    <p class="text-[11px] text-slate-400 font-mono mt-0.5">${p.mrn || ' '}</p>
                 </td>
                 <td class="p-5 text-slate-600 text-sm">${p.diagnosis || '—'}</td>
-                <td class="p-5 text-slate-600 text-sm">${p.next_appointment || '—'}</td>
-                <td class="p-5 text-slate-600 text-sm">—</td>
+                <td class="p-5 text-slate-600 text-sm">${p.next_appointment || 'Unscheduled'}</td>
+                <td class="p-5 text-slate-600 text-sm">${p.sessions || '0'}</td>
                 <td class="p-5"><span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">Active</span></td>
                 <td class="p-5 text-right">
                     <button onclick="event.stopPropagation(); openPatientDetail(${JSON.stringify(p).replace(/"/g, '&quot;')})"
@@ -416,7 +407,7 @@
     function renderSidebar(patients) {
         const list = document.getElementById('sidebar-list');
         if (!list) return;
-
+        
         if (!patients.length) {
             list.innerHTML = `<div class="p-6 text-center text-slate-400">
                 <i class="fas fa-satellite-dish text-2xl mb-3 text-teal-200 animate-pulse"></i>
@@ -433,61 +424,141 @@
                 </div>
                 <div class="overflow-hidden">
                     <p class="text-sm font-semibold text-slate-700 truncate">${p.full_name || 'Unknown'}</p>
-                    <p class="text-[10px] text-slate-400 font-mono">${p.mrn || '—'}</p>
+                    <p class="text-[10px] text-slate-400 font-mono">${p.mrn || ' '}</p>
                 </div>
             </button>`).join('');
     }
 
     // Currently open patient data
     let currentPatient = null;
-
+    
     function openPatientDetail(patient) {
         currentPatient = patient;
-
+        
         // Populate the detail view fields
         const mrnEl = document.querySelector('#detail-view p strong.font-mono');
-        if (mrnEl) mrnEl.textContent = patient.mrn || '—';
-
+        if (mrnEl) mrnEl.textContent = patient.mrn || '';
+        
         const diagInput = document.querySelector('input[name="diagnosis"]');
         if (diagInput) diagInput.value = patient.diagnosis || '';
-
+        
         const rxInput = document.querySelector('input[name="treatment"]');
-        if (rxInput) rxInput.value = (patient.medications || []).join(', ') || '';
-
+        if (rxInput) rxInput.value = patient.active_treatment || '';
+        
         const notesArea = document.querySelector('textarea[name="clinical_notes"]');
         if (notesArea) notesArea.value = patient.notes || '';
-
+        
         // Set the hidden patient_mrn fields in forms
         document.querySelectorAll('input[name="patient_mrn"]').forEach(el => {
             el.value = patient.mrn || '';
         });
-
+        
         switchView('detail');
     }
 
-    // ── Save patient updates via API ────────────────────────────────
+    // --- All form submissions via fetch (includes JWT) ---
     document.addEventListener('DOMContentLoaded', () => {
-        const updateForm = document.querySelector('form[action="/api/patient/update"]');
+        
+        // Patient update form (diagnosis + notes)
+        const updateForm = document.getElementById('patient-update-form');
         if (updateForm) {
             updateForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentPatient) return;
-
-                const noteText = document.querySelector('textarea[name="clinical_notes"]').value;
+                
+                const diagnosis  = document.querySelector('input[name="diagnosis"]')?.value || '';
+                const noteText   = document.querySelector('textarea[name="clinical_notes"]')?.value || '';
+                const treatment  = document.querySelector('input[name="treatment"]')?.value || '';
+                
                 try {
-                    const res = await fetch(`${API_BASE}/notes`, {
-                        method:  'POST',
+                    // Update patient record
+                    await fetch(`${API_BASE}/patients`, {
+                        method:  'PUT',
                         headers: authHeaders(),
                         body:    JSON.stringify({
-                            patient_id: currentPatient.id || 0,
-                            note_text:  noteText,
+                            mrn: currentPatient.mrn,
+                            primary_diagnosis: diagnosis,
+                            active_treatment: treatment,
                         }),
                     });
-                    if (res.ok) alert('Record updated successfully.');
-                    else        alert('Failed to save. Please try again.');
-                } catch (_) {
-                    alert('Network error. Please try again.');
-                }
+                    
+                    // Save note if there is one
+                    if (noteText.trim()) {
+                        await fetch(`${API_BASE}/notes`, {
+                            method:  'POST',
+                            headers: authHeaders(),
+                            body:    JSON.stringify({ mrn: currentPatient.mrn, notes_text: noteText }),
+                        });
+                    }
+                    
+                    alert('Record updated successfully.');
+                    loadPatients();
+                } catch (_) { alert('Network error. Please try again.'); }
+            });
+        }
+
+        // Add patient form
+        const addForm = document.getElementById('add-patient-form');
+        if (addForm) {
+            addForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fullName  = addForm.querySelector('input[name="new_name"]')?.value?.trim() || '';
+                const diagnosis = addForm.querySelector('input[name="new_diagnosis"]')?.value?.trim() || '';
+                const email     = addForm.querySelector('input[name="new_email"]')?.value?.trim() || '';
+                
+                if (!fullName || !email) { alert('Full name and email are required.'); return; }
+                
+                try {
+                    const res  = await fetch(`${API_BASE}/patients`, {
+                        method:  'POST',
+                        headers: authHeaders(),
+                        body:    JSON.stringify({ full_name: fullName, email, primary_diagnosis: diagnosis }),
+                    });
+                    const data = await res.json();
+                    
+                    if (res.ok) {
+                        alert(`Patient registered. MRN: ${data.mrn}`);
+                        toggleModal('add-patient-modal', false);
+                        addForm.reset();
+                        loadPatients();
+                    } else {
+                        alert(data.detail || 'Registration failed.');
+                    }
+                } catch (_) { alert('Network error.'); }
+            });
+        }
+
+        // Appointment form (schedule / cancel)
+        const apptForm = document.getElementById('appt-form');
+        if (apptForm) {
+            apptForm.querySelectorAll('button[name="action"]').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (!currentPatient) return;
+                    
+                    const action = btn.value; // "save" or "cancel"
+                    let body;
+                    
+                    if (action === 'cancel') {
+                        if (!confirm('Cancel this appointment?')) return;
+                        body = { action: 'cancel', mrn: currentPatient.mrn };
+                    } else {
+                        const date = apptForm.querySelector('input[name="appt_date"]')?.value;
+                        const time = apptForm.querySelector('input[name="appt_time"]')?.value;
+                        if (!date || !time) { alert('Date and time are required.'); return; }
+                        body = { action: 'schedule', scheduled_at: `${date}T${time}`, mrn: currentPatient.mrn };
+                    }
+                    
+                    try {
+                        const res  = await fetch(`${API_BASE}/appointment`, {
+                            method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
+                        });
+                        const data = await res.json();
+                        alert(data.detail || 'Done.');
+                        toggleModal('appt-modal', false);
+                        loadPatients();
+                    } catch (_) { alert('Network error.'); }
+                });
             });
         }
 
@@ -499,43 +570,82 @@
         }
     });
 
-    // ── PDF Generation (unchanged from original) ──────────────────
+    // --- Delete patient via API ---
+    async function deletePatient() {
+        if (!currentPatient) return;
+        if (!confirm('Permanently delete this patient record? This cannot be undone.')) return;
+        
+        try {
+            const res  = await fetch(`${API_BASE}/patients`, {
+                method:  'DELETE',
+                headers: authHeaders(),
+                body:    JSON.stringify({ mrn: currentPatient.mrn }),
+            });
+            const data = await res.json();
+            if (res.ok) { alert('Patient record deleted.'); switchView('overview'); loadPatients(); }
+            else        alert(data.detail || 'Delete failed.');
+        } catch (_) { alert('Network error.'); }
+    }
+
+    // --- Cancel appointment via API ---
+    async function cancelAppointment() {
+        if (!currentPatient) return;
+        if (!confirm('Cancel this appointment?')) return;
+        try {
+            const res  = await fetch(`${API_BASE}/appointment`, {
+                method:  'POST',
+                headers: authHeaders(),
+                body:    JSON.stringify({ action: 'cancel', mrn: currentPatient.mrn }),
+            });
+            const data = await res.json();
+            alert(data.detail || 'Done.');
+            loadPatients();
+        } catch (_) { alert('Network error.'); }
+    }
+
+    // --- PDF Generation ---
     function generatePatientReport() {
         const btnText = document.getElementById('export-patient-text');
         const btnIcon = document.getElementById('export-patient-icon');
         const originalText = btnText ? btnText.innerText : 'Export PDF';
-
+        
         if (btnText) btnText.innerText = 'Compiling...';
         if (btnIcon) btnIcon.className = 'fas fa-circle-notch fa-spin mr-1';
-
+        
         setTimeout(() => {
             try {
                 window.jsPDF = window.jspdf.jsPDF;
                 const doc = new jsPDF();
-
+                
                 const diagInput  = document.querySelector('input[name="diagnosis"]').value   || 'Awaiting Data';
                 const rxInput    = document.querySelector('input[name="treatment"]').value    || 'Awaiting Data';
                 const notesInput = document.querySelector('textarea[name="clinical_notes"]').value || 'No notes.';
-                const mrn        = currentPatient ? (currentPatient.mrn || '—') : '—';
-                const name       = currentPatient ? (currentPatient.full_name || '—') : '—';
-
+                
+                const mrn        = currentPatient ? (currentPatient.mrn || ' ') : ' ';
+                const name       = currentPatient ? (currentPatient.full_name || ' ') : ' ';
+                
                 doc.setFontSize(20); doc.setTextColor(15, 118, 110);
                 doc.text('Serenity Psychiatric Care', 105, 20, { align: 'center' });
                 doc.setFontSize(14); doc.setTextColor(51, 65, 85);
                 doc.text('Clinical Patient Report', 105, 30, { align: 'center' });
+                
                 doc.setFontSize(11); doc.setTextColor(0, 0, 0);
                 doc.text('Date: ' + new Date().toLocaleString(), 15, 45);
                 doc.text('Patient: ' + name + '  |  MRN: ' + mrn, 15, 55);
+                
                 doc.setFont(undefined, 'bold'); doc.text('Primary Diagnosis:', 15, 70);
                 doc.setFont(undefined, 'normal'); doc.text(diagInput, 15, 77);
+                
                 doc.setFont(undefined, 'bold'); doc.text('Active Treatment:', 15, 90);
                 doc.setFont(undefined, 'normal'); doc.text(rxInput, 15, 97);
+                
                 doc.setFont(undefined, 'bold'); doc.text('Clinical Progress Notes:', 15, 110);
                 doc.setFont(undefined, 'normal');
                 doc.text(doc.splitTextToSize(notesInput, 180), 15, 117);
+                
                 doc.setFontSize(9); doc.setTextColor(148, 163, 184);
-                doc.text('CONFIDENTIAL MEDICAL RECORD — DO NOT DISTRIBUTE', 105, 280, { align: 'center' });
-
+                doc.text('CONFIDENTIAL MEDICAL RECORD - DO NOT DISTRIBUTE', 105, 280, { align: 'center' });
+                
                 const pdfBlob = doc.output('blob');
                 const url     = URL.createObjectURL(pdfBlob);
                 const a       = document.createElement('a');
@@ -552,6 +662,6 @@
             }
         }, 800);
     }
-</script>
+    </script>
 </body>
 </html>

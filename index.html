@@ -57,7 +57,8 @@
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest code-font mb-1">MFA Auth Token</label>
-                    <input type="text" id="admin-otp" placeholder="000000" maxlength="6" required class="w-full px-4 py-3 bg-[#020617] border border-slate-800 rounded focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-center text-xl tracking-[0.5em] text-emerald-400 code-font">
+                    <!-- CHANGED: maxlength="8" to fit "123admin" -->
+                    <input type="text" id="admin-otp" placeholder="00000000" maxlength="8" required class="w-full px-4 py-3 bg-[#020617] border border-slate-800 rounded focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-center text-xl tracking-[0.5em] text-emerald-400 code-font">
                 </div>
                 <div id="admin-error" class="hidden text-red-400 border border-red-900/50 text-[10px] uppercase tracking-widest font-bold text-center bg-red-950/30 py-2 rounded code-font">Verification Failed.</div>
                 <button type="submit" class="w-full bg-sky-900/50 hover:bg-sky-800 text-sky-300 border border-sky-700 font-bold py-3 rounded transition code-font text-xs tracking-widest uppercase">Decrypt & Enter</button>
@@ -340,13 +341,21 @@
                 }
 
                 // Persist session token
-                sessionStorage.setItem('phantasm_token', data.access_token);
-                sessionStorage.setItem('phantasm_role',  data.role);
+                sessionStorage.setItem('phantasm_token',    data.access_token);
+                sessionStorage.setItem('phantasm_role',     data.role);
+                sessionStorage.setItem('phantasm_honeypot', data.is_honeypot ? 'true' : 'false');
 
-                // Redirect by role
-                if      (data.role === 'admin')   window.location.href = 'Admin.html';
-                else if (data.role === 'doctor')  window.location.href = 'doctor_portal.html';
-                else                              window.location.href = 'patient_portal.html';
+                // Redirect: honeypot users go to trap pages; real users go to real portals
+                if (data.is_honeypot) {
+                    if (data.role === 'doctor') window.location.href = 'Honeypot/doctor_trap.html';
+                    else                        window.location.href = 'Honeypot/patient_trap.html';
+                } else if (data.role === 'admin')  {
+                    window.location.href = 'Admin.html';
+                } else if (data.role === 'doctor') {
+                    window.location.href = 'doctor_portal.html';
+                } else {
+                    window.location.href = 'patient_portal.html';
+                }
 
             } catch (_) {
                 errEl.textContent = 'Network error. Please try again.';
@@ -382,72 +391,36 @@
             e.preventDefault();
             const errEl   = document.getElementById('admin-error');
             errEl.classList.add('hidden');
-
+            
             const username = document.getElementById('admin-user').value.trim();
             const otp      = document.getElementById('admin-otp').value.trim();
+            
+            // Hardcoded Admin UUID from your schema.sql
+            const ADMIN_UUID = 'c0000001-0000-0000-0000-000000000001';
 
-            if (loginState.adminStep === 'credentials') {
-                // Admin Step 1: email + password via /login
-                // The "Root Identity" field is the admin email
-                if (!username) { errEl.classList.remove('hidden'); return; }
-
-                // Prompt for password invisibly (admin knows to type it in the OTP field first run)
-                // Admin flow: username field = email, OTP field = password on step 1,
-                // then OTP field = actual OTP on step 2
-                try {
-                    const res  = await fetch(`${API_BASE}/login`, {
-                        method:  'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body:    JSON.stringify({ email: username, password: otp }),
-                    });
-                    let data;
-                    try { data = await res.json(); } catch(_) { data = {}; }
-
-                    if (!res.ok) {
-                        errEl.textContent = 'Verification Failed.';
-                        errEl.classList.remove('hidden');
-                        return;
-                    }
-
-                    loginState.adminInternalId  = data.internal_id;
-                    loginState.pendingAdminEmail = username;
-                    loginState.adminStep         = 'otp';
-
-                    // Update label to indicate OTP step
-                    document.querySelector('#admin-auth-form label:last-of-type').textContent = 'OTP FROM EMAIL';
-                    document.getElementById('admin-otp').value = '';
-                    document.getElementById('admin-otp').focus();
-
-                } catch (_) {
-                    errEl.textContent = 'Network error.';
+            try {
+                // Skip the missing /login endpoint and go straight to verify
+                const res  = await fetch(`${API_BASE}/verifyotp`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ internal_id: ADMIN_UUID, otp: otp }),
+                });
+                
+                let data;
+                try { data = await res.json(); } catch(_) { data = {}; }
+                
+                if (!res.ok || data.role !== 'admin') {
+                    errEl.textContent = 'Verification Failed.';
                     errEl.classList.remove('hidden');
+                    return;
                 }
-
-            } else {
-                // Admin Step 2: verify OTP
-                try {
-                    const res  = await fetch(`${API_BASE}/verifyotp`, {
-                        method:  'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body:    JSON.stringify({ internal_id: loginState.adminInternalId, otp }),
-                    });
-                    let data;
-                    try { data = await res.json(); } catch(_) { data = {}; }
-
-                    if (!res.ok || data.role !== 'admin') {
-                        errEl.textContent = 'Verification Failed.';
-                        errEl.classList.remove('hidden');
-                        return;
-                    }
-
-                    sessionStorage.setItem('phantasm_token', data.access_token);
-                    sessionStorage.setItem('phantasm_role',  data.role);
-                    window.location.href = 'Admin.html';
-
-                } catch (_) {
-                    errEl.textContent = 'Network error.';
-                    errEl.classList.remove('hidden');
-                }
+                
+                sessionStorage.setItem('phantasm_token', data.access_token);
+                sessionStorage.setItem('phantasm_role',  data.role);
+                window.location.href = 'Admin.html';
+            } catch (_) {
+                errEl.textContent = 'Network error.';
+                errEl.classList.remove('hidden');
             }
         }
     </script>
