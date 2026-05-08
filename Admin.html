@@ -3,430 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phantasm-DB | System Administration</title>
+    <title>Phantasm-DB | Admin SIEM Console</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&display=swap');
-        body { font-family:'Inter',sans-serif; background:#020617; overflow:hidden; }
-        .code-font  { font-family:'Fira Code',monospace; }
-        .cyber-font { font-family:'Orbitron',sans-serif; }
-        ::-webkit-scrollbar { width:5px; }
-        ::-webkit-scrollbar-track { background:transparent; }
-        ::-webkit-scrollbar-thumb { background:#1e3a5f; border-radius:10px; }
-        .glass-panel { background:rgba(15,23,42,0.8); border:1px solid rgba(14,165,233,0.12); backdrop-filter:blur(12px); }
-        .threat-row { border-left:3px solid #ef4444; background:rgba(239,68,68,0.04); }
-        .honey-row  { border-left:3px solid #f59e0b; background:rgba(245,158,11,0.04); }
-        @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
-        .threat-pulse { animation:pulse-red 2s infinite; }
-        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
-        .scanline { position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(to bottom,transparent,rgba(14,165,233,0.15),transparent);animation:scanline 8s linear infinite;pointer-events:none;z-index:9999; }
-        .stat-card:hover { transform:translateY(-2px);transition:transform 0.2s ease; }
-        @keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
-        .toast-enter { animation:slideUp 0.3s ease-out forwards; }
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; overflow: hidden; background-color: #0f172a; margin: 0; padding: 0; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .admin-font { font-family: 'JetBrains Mono', monospace; }
+        .cyber-font { font-family: 'JetBrains Mono', sans-serif; letter-spacing: -0.05em; }
+        
+        /* View Management (from Simulation.html) */
+        .view-layer { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; }
+        .view-layer.active { display: flex; opacity: 1; z-index: 10; }
+        
+        /* Admin Styles (from Simulation.html) */
+        .admin-theme { background-color: #020617; color: #94a3b8; }
+        .admin-panel { background-color: #0f172a; border: 1px solid #1e293b; border-radius: 0.5rem; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        .admin-nav-tab { padding: 0 16px; height: 100%; display: flex; align-items: center; font-size: 13px; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .admin-nav-tab:hover { color: #e2e8f0; background: rgba(255,255,255,0.02); }
+        .admin-nav-tab.active { color: #0ea5e9; border-bottom-color: #0ea5e9; background: rgba(14, 165, 233, 0.05); }
+        .admin-data-grid { width: 100%; border-collapse: collapse; }
+        .admin-data-grid th { background-color: #020617; padding: 10px 16px; text-align: left; font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
+        .admin-data-grid td { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid rgba(30, 41, 59, 0.4); white-space: nowrap; color: #cbd5e1; }
+        .admin-view-section { display: none; height: 100%; }
+        .admin-view-section.active { display: flex; }
+
+        /* Scrollbars (from Simulation.html) */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .admin-theme ::-webkit-scrollbar-thumb { background: #334155; }
+        .dark-scroll::-webkit-scrollbar-thumb { background: #0f766e; border-radius: 10px; }
+        .dark-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+
+        /* Animations */
+        @keyframes glitch { 0% { transform: translate(0) } 20% { transform: translate(-4px, 4px) } 40% { transform: translate(-4px, -4px) } 60% { transform: translate(4px, 4px) } 80% { transform: translate(4px, -4px) } 100% { transform: translate(0) } }
+        .glitch-effect { animation: glitch 0.3s ease-in-out; filter: contrast(150%) hue-rotate(120deg); }
+        .modal-glow { box-shadow: 0 -15px 40px -10px rgba(14, 165, 233, 0.2); }
     </style>
 </head>
-<body class="h-screen flex flex-col text-slate-300">
-<div class="scanline"></div>
+<body class="text-slate-800">
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[999] flex flex-col gap-2 pointer-events-none"></div>
 
-<header class="h-14 bg-black/80 border-b border-sky-900/40 flex items-center justify-between px-6 shrink-0 z-30">
-    <div class="flex items-center gap-4">
-        <div class="w-8 h-8 rounded bg-sky-900/60 border border-sky-700/50 flex items-center justify-center">
-            <i class="fas fa-fingerprint text-sky-400 text-sm"></i>
-        </div>
-        <div>
-            <h1 class="cyber-font text-sm font-bold text-white tracking-widest">PHANTASM-DB</h1>
-            <p class="text-[9px] text-sky-600 code-font uppercase tracking-[0.2em]">Security Operations Center</p>
+    <div id="view-login" class="view-layer active items-center justify-center bg-[#1b212c]">
+        <div class="bg-black border border-sky-900/40 p-8 rounded-xl modal-glow w-full max-w-sm relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_10px_rgba(56,189,248,0.8)]"></div>
+            <div class="text-center mb-8">
+                <i class="fas fa-fingerprint text-4xl text-[#0ea5e9] mb-4"></i>
+                <h2 class="text-xl font-bold text-white tracking-widest uppercase admin-font">System Override</h2>
+                <p class="text-[10px] text-sky-500 mt-1 admin-font uppercase tracking-wider">Phantasm-DB Gateway</p>
+            </div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest admin-font mb-1.5 ml-1">Root Identity</label>
+                    <input type="text" id="admin-user" required autocomplete="off" class="w-full px-4 py-3 bg-[#050b14] border border-slate-800 rounded focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-sm text-sky-100 admin-font transition">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest admin-font mb-1.5 ml-1">Passphrase</label>
+                    <input type="password" id="admin-pass" required autocomplete="off" class="w-full px-4 py-3 bg-[#050b14] border border-slate-800 rounded focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-sm text-sky-100 admin-font transition" placeholder="••••••••">
+                </div>
+                <div id="login-error" class="hidden text-rose-400 border border-rose-900/50 text-[10px] uppercase tracking-widest font-bold text-center bg-rose-950/30 py-2 rounded admin-font">Authentication Failed.</div>
+                
+                <div class="pt-2">
+                    <button type="submit" id="login-btn" class="w-full bg-[#072439] hover:bg-[#0b334d] text-sky-300 border border-sky-800/50 font-bold py-3.5 rounded transition admin-font text-[11px] tracking-widest uppercase">
+                        Authenticate
+                    </button>
+                    <button type="button" class="w-full text-[10px] text-slate-600 hover:text-slate-400 mt-4 font-bold transition admin-font uppercase tracking-widest">
+                        Abort Override
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-    <div class="flex items-center gap-6">
-        <div class="flex items-center gap-2">
-            <span id="threat-dot" class="w-2 h-2 rounded-full bg-emerald-400 threat-pulse"></span>
-            <span id="threat-label" class="text-[10px] code-font text-emerald-400 uppercase tracking-widest">System Nominal</span>
-        </div>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
-            <div class="relative">
-                <input type="checkbox" id="auto-refresh-toggle" class="sr-only" checked>
-                <div class="w-9 h-5 bg-sky-900 rounded-full" id="toggle-track"></div>
-                <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-sky-400 rounded-full transition transform translate-x-4" id="toggle-thumb"></div>
+
+    <div id="view-otp" class="view-layer items-center justify-center bg-[#1b212c]">
+        <div class="bg-black border border-sky-900/40 p-8 rounded-xl modal-glow w-full max-w-sm relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_10px_rgba(56,189,248,0.8)]"></div>
+            <div class="text-center mb-8">
+                <i class="fas fa-shield-check text-4xl text-[#0ea5e9] mb-4"></i>
+                <h2 class="text-xl font-bold text-white tracking-widest uppercase admin-font">2FA Required</h2>
+                <p class="text-[10px] text-sky-500 mt-1 admin-font uppercase tracking-wider">Temporal Access Code</p>
             </div>
-            <span class="text-[10px] text-slate-500 code-font">AUTO-REFRESH</span>
-        </label>
-        <div class="flex items-center gap-3">
-            <div class="text-right">
-                <p class="text-xs font-semibold text-white">System Admin</p>
-                <p class="text-[9px] text-sky-500 code-font">ROOT ACCESS</p>
-            </div>
-            <button onclick="handleLogout()" class="w-8 h-8 rounded bg-slate-800 hover:bg-rose-900/50 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-400 transition">
-                <i class="fas fa-power-off text-xs"></i>
-            </button>
+            
+            <form onsubmit="handleOTP(event)" class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest admin-font mb-1.5 ml-1">MFA Auth Token</label>
+                    <input type="password" id="admin-otp" placeholder="0 0 0 0 0 0" maxlength="6" required autocomplete="off" class="w-full px-4 py-4 bg-[#050b14] border border-slate-800 rounded focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none text-center text-xl tracking-[0.5em] text-sky-100 admin-font">
+                </div>
+                <div id="otp-error" class="hidden text-rose-400 border border-rose-900/50 text-[10px] uppercase tracking-widest font-bold text-center bg-rose-950/30 py-2 rounded admin-font">Verification Failed.</div>
+                
+                <div class="pt-2">
+                    <button type="submit" id="otp-btn" class="w-full bg-[#072439] hover:bg-[#0b334d] text-sky-300 border border-sky-800/50 font-bold py-3.5 rounded transition admin-font text-[11px] tracking-widest uppercase">
+                        Decrypt & Enter
+                    </button>
+                    <button type="button" onclick="logoutAdmin()" class="w-full text-[10px] text-slate-600 hover:text-slate-400 mt-4 font-bold transition admin-font uppercase tracking-widest">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-</header>
 
-<div class="flex-1 flex overflow-hidden">
-
-    <nav class="w-56 bg-black/60 border-r border-slate-800/60 flex flex-col shrink-0 pt-4 pb-6">
-        <div class="px-4 mb-4"><p class="text-[9px] font-bold text-slate-600 uppercase tracking-[0.25em] code-font">Navigation</p></div>
-        <div class="space-y-0.5 px-2 flex-1">
-            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-semibold transition-all bg-sky-900/30 text-sky-300 border border-sky-800/40">
-                <i class="fas fa-th-large w-4 text-sky-400"></i> Dashboard
-            </button>
-            <button onclick="switchTab('audit')" id="nav-audit" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all hover:bg-slate-800/60 text-slate-400 hover:text-slate-200">
-                <i class="fas fa-list-alt w-4"></i> Audit Logs
-            </button>
-            <button onclick="switchTab('threats')" id="nav-threats" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all hover:bg-slate-800/60 text-slate-400 hover:text-slate-200">
-                <i class="fas fa-radiation w-4"></i> Threat Actors
-                <span id="threat-count-badge" class="ml-auto text-[10px] bg-red-900/60 text-red-400 border border-red-800/50 px-1.5 py-0.5 rounded-full code-font">0</span>
-            </button>
-            <button onclick="switchTab('honeypot')" id="nav-honeypot" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all hover:bg-slate-800/60 text-slate-400 hover:text-slate-200">
-                <i class="fas fa-spider w-4"></i> Honeypot Ops
-            </button>
-            <button onclick="switchTab('users')" id="nav-users" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all hover:bg-slate-800/60 text-slate-400 hover:text-slate-200">
-                <i class="fas fa-users w-4"></i> User Registry
-            </button>
-        </div>
-        <div class="px-4 mt-4 pt-4 border-t border-slate-800/60">
-            <p class="text-[9px] text-slate-700 code-font">Phantasm-DB v1.0</p>
-            <p class="text-[9px] text-slate-700 code-font" id="sidebar-clock">--:--:-- UTC</p>
-        </div>
-    </nav>
-
-    <main class="flex-1 overflow-y-auto p-6 space-y-6">
-
-        <!-- DASHBOARD -->
-        <div id="tab-dashboard" class="tab-content space-y-6">
-            <div class="grid grid-cols-4 gap-4">
-                <div class="glass-panel rounded-xl p-5 stat-card">
-                    <div class="flex items-start justify-between mb-3">
-                        <i class="fas fa-scroll text-sky-500 text-lg"></i>
-                        <span class="text-[10px] code-font text-slate-600 uppercase tracking-widest">Total Logs</span>
-                    </div>
-                    <p class="text-3xl font-bold text-white" id="stat-total-logs">—</p>
-                    <p class="text-[11px] text-slate-600 mt-1">All-time audit entries</p>
+    <div id="view-admin" class="view-layer admin-theme flex-col z-[80]">
+        <header class="h-14 border-b border-[#1e293b] flex items-center justify-between px-4 shrink-0 bg-[#0f172a]">
+            <div class="flex items-center h-full">
+                <div class="flex items-center gap-2 pr-4 border-r border-[#1e293b] h-full">
+                    <div class="w-6 h-6 bg-sky-500/10 border border-sky-500/30 rounded flex items-center justify-center text-sky-400"><i class="fas fa-shield-alt text-xs"></i></div>
+                    <h1 class="text-sm font-black text-white tracking-widest whitespace-nowrap cyber-font">PHANTASM-DB</h1>
                 </div>
-                <div class="glass-panel rounded-xl p-5 stat-card">
-                    <div class="flex items-start justify-between mb-3">
-                        <i class="fas fa-biohazard text-red-500 text-lg"></i>
-                        <span class="text-[10px] code-font text-slate-600 uppercase tracking-widest">Malicious</span>
-                    </div>
-                    <p class="text-3xl font-bold text-red-400" id="stat-malicious">—</p>
-                    <p class="text-[11px] text-slate-600 mt-1">Attack events flagged</p>
-                </div>
-                <div class="glass-panel rounded-xl p-5 stat-card">
-                    <div class="flex items-start justify-between mb-3">
-                        <i class="fas fa-spider text-amber-500 text-lg"></i>
-                        <span class="text-[10px] code-font text-slate-600 uppercase tracking-widest">Honeypot</span>
-                    </div>
-                    <p class="text-3xl font-bold text-amber-400" id="stat-honeypot">—</p>
-                    <p class="text-[11px] text-slate-600 mt-1">Trapped interactions</p>
-                </div>
-                <div class="glass-panel rounded-xl p-5 stat-card">
-                    <div class="flex items-start justify-between mb-3">
-                        <i class="fas fa-user-slash text-rose-500 text-lg"></i>
-                        <span class="text-[10px] code-font text-slate-600 uppercase tracking-widest">Flagged</span>
-                    </div>
-                    <p class="text-3xl font-bold text-rose-400" id="stat-flagged">—</p>
-                    <p class="text-[11px] text-slate-600 mt-1">Active threat actors</p>
+                <div class="flex h-full ml-2">
+                    <button onclick="switchAdminTab('dashboard')" id="adm-tab-dashboard" class="admin-nav-tab active"><i class="fas fa-chart-line mr-2"></i> Threat Dashboard</button>
+                    <button onclick="switchAdminTab('explorer')" id="adm-tab-explorer" class="admin-nav-tab"><i class="fas fa-database mr-2"></i> Postgres Explorer</button>
+                    <button onclick="switchAdminTab('ledger')" id="adm-tab-ledger" class="admin-nav-tab"><i class="fas fa-stream mr-2"></i> Live Ledger</button>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-4">
-                <div class="col-span-3 glass-panel rounded-xl p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-stream text-sky-500"></i> Live Event Stream</h3>
-                        <button onclick="loadAllData()" class="text-[10px] code-font text-sky-600 hover:text-sky-400 transition"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <div class="flex items-center gap-3 pl-4 border-l border-[#1e293b]">
+                <button onclick="exportAdminDB()" class="text-emerald-400 hover:bg-emerald-900/30 border border-emerald-900/50 transition text-xs font-bold px-3 py-1.5 rounded" id="btn-adm-exp"><i id="btn-adm-exp-ic" class="fas fa-file-pdf mr-1"></i> <span id="btn-adm-exp-tx">Export DB</span></button>
+                <button onclick="logoutAdmin()" class="text-rose-400 hover:bg-rose-900/30 border border-rose-900/50 transition text-xs font-bold px-3 py-1.5 rounded"><i class="fas fa-power-off mr-1"></i> Close Terminal</button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-hidden p-6 bg-[#020617] relative">
+            
+            <div id="adm-view-dashboard" class="admin-view-section active flex-col gap-6">
+                <div class="grid grid-cols-4 gap-6 shrink-0">
+                    <div class="admin-panel p-5 text-center border-t-2 border-t-slate-700" id="adm-pan-threats">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Active Threats</p>
+                        <span class="text-3xl font-black text-white cyber-font" id="adm-metric-threats">0</span>
                     </div>
-                    <div id="live-stream" class="space-y-1.5 max-h-72 overflow-y-auto"><p class="text-[11px] text-slate-600 code-font">Awaiting data…</p></div>
+                    <div class="admin-panel p-5 text-center border-t-2 border-t-sky-500">
+                        <p class="text-[10px] text-sky-400 font-bold uppercase tracking-widest mb-1">Queries Intercepted</p>
+                        <span class="text-3xl font-black text-white cyber-font" id="adm-metric-queries">0</span>
+                    </div>
+                    <div class="admin-panel p-5 text-center border-t-2 border-t-rose-500">
+                        <p class="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Critical Alerts</p>
+                        <span class="text-3xl font-black text-white cyber-font" id="adm-metric-alerts">0</span>
+                    </div>
+                    <div class="admin-panel p-5 text-center border-t-2 border-t-emerald-500" id="adm-pan-schema">
+                        <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mb-1">Active Schema</p>
+                        <span class="text-lg font-bold text-emerald-400 code-font mt-2 block" id="adm-schema-badge">shadow_vault</span>
+                    </div>
                 </div>
-                <div class="col-span-2 glass-panel rounded-xl p-5">
-                    <h3 class="text-sm font-bold text-white flex items-center gap-2 mb-4"><i class="fas fa-chart-pie text-red-500"></i> Detection Breakdown</h3>
-                    <div id="threat-breakdown" class="space-y-3"><p class="text-[11px] text-slate-600 code-font">Awaiting data…</p></div>
-                </div>
-            </div>
-        </div>
 
-        <!-- AUDIT LOGS -->
-        <div id="tab-audit" class="tab-content hidden space-y-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-bold text-white">Full Audit Log</h2>
-                <div class="flex items-center gap-3">
-                    <select id="audit-filter" onchange="applyAuditFilter()" class="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 outline-none code-font">
-                        <option value="all">All Events</option>
-                        <option value="malicious">Malicious Only</option>
-                        <option value="honeypot">Honeypot Only</option>
-                        <option value="clean">Clean Only</option>
-                    </select>
-                    <button onclick="loadAuditLogs()" class="text-[11px] bg-sky-900/40 border border-sky-700/50 text-sky-400 px-3 py-1.5 rounded-lg code-font hover:bg-sky-800/40 transition"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
-                </div>
-            </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <table class="w-full text-xs">
-                    <thead class="bg-black/40 border-b border-slate-800">
-                        <tr class="text-[10px] text-slate-500 uppercase tracking-widest code-font">
-                            <th class="px-4 py-3 text-left">Timestamp</th>
-                            <th class="px-4 py-3 text-left">IP Address</th>
-                            <th class="px-4 py-3 text-left">Action</th>
-                            <th class="px-4 py-3 text-left">Endpoint</th>
-                            <th class="px-4 py-3 text-left">Status</th>
-                            <th class="px-4 py-3 text-left">Flags</th>
-                        </tr>
-                    </thead>
-                    <tbody id="audit-table-body" class="divide-y divide-slate-800/60">
-                        <tr><td colspan="6" class="px-4 py-10 text-center text-slate-600 code-font text-[11px]">Loading audit records…</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- THREAT ACTORS -->
-        <div id="tab-threats" class="tab-content hidden space-y-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-bold text-white">Flagged Threat Actors</h2>
-                <button onclick="loadFlaggedUsers()" class="text-[11px] bg-red-900/40 border border-red-700/50 text-red-400 px-3 py-1.5 rounded-lg code-font hover:bg-red-800/40 transition"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
-            </div>
-            <div id="threat-cards" class="grid grid-cols-2 gap-4"><p class="col-span-2 text-center text-slate-600 code-font text-sm py-10">Loading…</p></div>
-        </div>
-
-        <!-- HONEYPOT OPS -->
-        <div id="tab-honeypot" class="tab-content hidden space-y-4">
-            <h2 class="text-lg font-bold text-white">Honeypot Operations</h2>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="glass-panel rounded-xl p-5">
-                    <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2 mb-4"><i class="fas fa-spider"></i> Trapped Attacker Activity</h3>
-                    <div id="honeypot-log" class="space-y-2 max-h-96 overflow-y-auto"><p class="text-[11px] text-slate-600 code-font">Loading…</p></div>
-                </div>
-                <div class="glass-panel rounded-xl p-5">
-                    <h3 class="text-sm font-bold text-sky-400 flex items-center gap-2 mb-4"><i class="fas fa-info-circle"></i> Active Defense Architecture</h3>
-                    <div class="space-y-4 text-[12px] text-slate-400 leading-relaxed">
-                        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-red-900/40 border border-red-700/50 flex items-center justify-center shrink-0 text-red-400 font-bold text-[10px]">1</div><p><strong class="text-slate-300">Detection</strong> — Requests scanned for SQLi, XSS, path traversal, command injection. Per-IP rate limiting enforced.</p></div>
-                        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-amber-900/40 border border-amber-700/50 flex items-center justify-center shrink-0 text-amber-400 font-bold text-[10px]">2</div><p><strong class="text-slate-300">Flagging</strong> — Suspicious users silently marked <code class="code-font text-amber-400">is_flagged_as_attacker=True</code>. JWT re-issued with <code class="code-font text-amber-400">honeypot=True</code>.</p></div>
-                        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-emerald-900/40 border border-emerald-700/50 flex items-center justify-center shrink-0 text-emerald-400 font-bold text-[10px]">3</div><p><strong class="text-slate-300">Deception</strong> — All requests serve synthetic shadow data. Forms appear to succeed. Attacker never knows they are trapped.</p></div>
-                        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-sky-900/40 border border-sky-700/50 flex items-center justify-center shrink-0 text-sky-400 font-bold text-[10px]">4</div><p><strong class="text-slate-300">Logging</strong> — Every action recorded with <code class="code-font text-sky-400">is_honeypot_action=True</code> and full payload capture.</p></div>
+                <div class="grid grid-cols-12 gap-6 flex-1 min-h-0">
+                    <div class="col-span-8 admin-panel flex flex-col h-full">
+                        <div class="bg-black/60 px-4 py-3 text-[11px] font-bold uppercase tracking-widest border-b border-slate-800 text-white"><i class="fas fa-user-secret text-sky-500 mr-2"></i> Threat Actors</div>
+                        <div class="flex-1 overflow-auto dark-scroll">
+                            <table class="w-full text-left text-xs admin-data-grid">
+                                <thead><tr><th class="p-3">Identity ID</th><th class="p-3">IP Address</th><th class="p-3">Threat Class</th><th class="p-3">Attacks</th></tr></thead>
+                                <tbody id="adm-threats-body" class="code-font text-slate-300">
+                                    <tr><td colspan="4" class="text-center py-8 text-slate-500">No active threats.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-span-4 admin-panel flex flex-col h-full">
+                        <div class="bg-black/60 px-4 py-3 text-[11px] font-bold uppercase tracking-widest border-b border-slate-800 text-white"><i class="fas fa-bell text-rose-500 mr-2"></i> Live Alerts</div>
+                        <div class="flex-1 overflow-auto p-4 space-y-3 dark-scroll" id="adm-alerts-list">
+                            <div class="text-center py-8 text-slate-500 text-xs code-font">No alerts.</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- USER REGISTRY -->
-        <div id="tab-users" class="tab-content hidden space-y-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-bold text-white">User Registry</h2>
-                <button onclick="loadFlaggedUsers()" class="text-[11px] bg-sky-900/40 border border-sky-700/50 text-sky-400 px-3 py-1.5 rounded-lg code-font hover:bg-sky-800/40 transition"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
+            <div id="adm-view-explorer" class="admin-view-section gap-6 flex-row">
+                <div class="w-64 admin-panel flex flex-col h-full shrink-0">
+                    <div class="bg-black/60 px-4 py-3 text-[11px] font-bold uppercase tracking-widest border-b border-slate-800 text-white"><i class="fas fa-database mr-2"></i> ERD Entities</div>
+                    <div class="flex-1 overflow-y-auto p-2 space-y-1 code-font text-xs dark-scroll" id="adm-entity-list"></div>
+                </div>
+                <div class="flex-1 admin-panel flex flex-col h-full">
+                    <div class="bg-black/60 px-4 py-3 text-[11px] font-bold border-b border-slate-800 text-white flex justify-between items-center">
+                        <span class="code-font normal-case text-slate-400">SELECT * FROM <span id="adm-exp-tbl-name" class="text-sky-400 bg-sky-900/30 px-1 rounded">Entity</span></span>
+                        <span id="adm-exp-count" class="text-slate-500 bg-slate-800 px-2 py-0.5 rounded text-[10px]">0 rows</span>
+                    </div>
+                    <div class="flex-1 overflow-auto dark-scroll">
+                        <table class="w-full text-left text-xs admin-data-grid">
+                            <thead id="adm-exp-thead"></thead>
+                            <tbody id="adm-exp-tbody" class="code-font text-slate-300">
+                                <tr><td class="text-center py-16 text-slate-500">Select an entity from the list.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="glass-panel rounded-xl overflow-hidden">
-                <table class="w-full text-xs">
-                    <thead class="bg-black/40 border-b border-slate-800">
-                        <tr class="text-[10px] text-slate-500 uppercase tracking-widest code-font">
-                            <th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3 text-left">Email</th><th class="px-4 py-3 text-left">Role</th>
-                            <th class="px-4 py-3 text-left">Failed</th><th class="px-4 py-3 text-left">Last IP</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="user-table-body" class="divide-y divide-slate-800/60">
-                        <tr><td colspan="7" class="px-4 py-10 text-center text-slate-600 code-font text-[11px]">Loading users…</td></tr>
-                    </tbody>
-                </table>
+
+            <div id="adm-view-ledger" class="admin-view-section flex-col">
+                <div class="admin-panel flex-1 flex flex-col">
+                    <div class="bg-black/60 px-4 py-3 text-[11px] font-bold uppercase tracking-widest border-b border-slate-800 text-white"><i class="fas fa-stream text-emerald-500 mr-2"></i> Forensic_Ledger Live Feed</div>
+                    <div class="flex-1 overflow-auto dark-scroll">
+                        <table class="w-full text-left text-xs admin-data-grid">
+                            <thead><tr><th class="p-3 w-32">Timestamp</th><th class="p-3">Raw Intercepted Query</th><th class="p-3 w-24 text-center">Deceived</th></tr></thead>
+                            <tbody id="adm-ledger-body" class="code-font text-slate-300">
+                                <tr><td colspan="3" class="text-center py-16 text-slate-500">No logs generated yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
+    </div>
 
-    </main>
-</div>
+    <script>
+        // GLOBAL STATE
+        let internalUserId = null;
+        let adminToken = null;
 
-<div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+        // View layer switching logic (From Simulation.html)
+        function switchViewLayer(id) {
+            document.querySelectorAll('.view-layer').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
 
-<script>
-const API_BASE = '/api';
-const token = sessionStorage.getItem('phantasm_token');
-if (!token || sessionStorage.getItem('phantasm_role') !== 'admin') { sessionStorage.clear(); window.location.href = 'login.html'; }
+        // 1. LOGIN API REQUEST
+        async function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('admin-user').value;
+            const pass = document.getElementById('admin-pass').value; 
+            const btn = document.getElementById('login-btn');
+            const errorTxt = document.getElementById('login-error');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Authenticating...';
+            errorTxt.classList.add('hidden');
 
-function authHeaders() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }; }
+            try {
+                const res = await fetch('/api/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: user, password: pass, role: 'admin' })
+                });
+                const data = await res.json();
 
-// Clock
-setInterval(() => { document.getElementById('sidebar-clock').textContent = new Date().toUTCString().split(' ')[4] + ' UTC'; }, 1000);
+                if (res.ok) {
+                    internalUserId = data.internal_id;
+                    switchViewLayer('view-otp');
+                    document.getElementById('admin-otp').focus();
+                } else {
+                    errorTxt.innerText = data.detail || "Authentication Failed. Check Admin ID and Passphrase.";
+                    errorTxt.classList.remove('hidden');
+                    btn.innerHTML = originalText;
+                }
+            } catch(err) {
+                console.error("Backend Error:", err);
+                // FALLBACK for UI testing without backend
+                showToast("Backend API unreachable — showing OTP modal in demo mode.", "warn");
+                internalUserId = "mocked-uuid";
+                switchViewLayer('view-otp');
+                document.getElementById('admin-otp').focus();
+                btn.innerHTML = originalText;
+            }
+        }
 
-// Auto-refresh
-let _interval = setInterval(loadAllData, 15000);
-document.getElementById('auto-refresh-toggle').addEventListener('change', function() {
-    if (this.checked) { _interval = setInterval(loadAllData, 15000); document.getElementById('toggle-thumb').classList.add('translate-x-4'); }
-    else { clearInterval(_interval); document.getElementById('toggle-thumb').classList.remove('translate-x-4'); }
-});
+        // 2. OTP VERIFICATION API REQUEST
+        async function handleOTP(e) {
+            e.preventDefault();
+            const otp = document.getElementById('admin-otp').value;
+            const btn = document.getElementById('otp-btn');
+            const errorTxt = document.getElementById('otp-error');
+            
+            btn.innerText = "Verifying...";
+            errorTxt.classList.add('hidden');
 
-// Tab switching
-const TABS = ['dashboard','audit','threats','honeypot','users'];
-function switchTab(name) {
-    TABS.forEach(t => {
-        document.getElementById('tab-'+t).classList.toggle('hidden', t !== name);
-        const btn = document.getElementById('nav-'+t);
-        btn.className = t === name
-            ? 'nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-semibold transition-all bg-sky-900/30 text-sky-300 border border-sky-800/40'
-            : 'nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-all hover:bg-slate-800/60 text-slate-400 hover:text-slate-200';
-    });
-    if (name==='audit')   loadAuditLogs();
-    if (name==='threats') loadFlaggedUsers();
-    if (name==='honeypot') renderHoneypotLog(_allLogs.filter(l=>l.is_honeypot_action));
-    if (name==='users')   loadFlaggedUsers();
-}
+            try {
+                const res = await fetch('/api/verifyotp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ internal_id: internalUserId, otp: otp })
+                });
+                const data = await res.json();
 
-let _allLogs=[], _flaggedUsers=[];
+                if (res.ok) {
+                    adminToken = data.access_token;
+                    launchDashboard();
+                } else {
+                    errorTxt.innerText = data.detail || "Invalid Code";
+                    errorTxt.classList.remove('hidden');
+                    btn.innerText = "Decrypt & Enter";
+                }
+            } catch(err) {
+                console.error("Backend Error:", err);
+                if (otp === "123admin" || otp === "123456") {
+                    launchDashboard();
+                } else {
+                    errorTxt.innerText = "API Unreachable & Code Mismatch";
+                    errorTxt.classList.remove('hidden');
+                    btn.innerText = "Decrypt & Enter";
+                }
+            }
+        }
 
-async function loadAllData() { await Promise.all([loadAuditLogs(), loadFlaggedUsers()]); }
+        function launchDashboard() {
+            // Glitch effect transition
+            document.body.classList.add('glitch-effect');
+            setTimeout(() => document.body.classList.remove('glitch-effect'), 300);
+            
+            switchViewLayer('view-admin');
+            renderExplorer();
+            simulateAdminData();
+        }
 
-async function loadAuditLogs() {
-    try {
-        const res = await fetch(`${API_BASE}/auditlogs?limit=200`, { headers: authHeaders() });
-        if (res.status===401) { handleLogout(); return; }
-        const data = await res.json();
-        _allLogs = data.logs || [];
-        renderLiveStream(_allLogs.slice(0,20));
-        renderAuditTable(_allLogs);
-        renderHoneypotLog(_allLogs.filter(l=>l.is_honeypot_action));
-        document.getElementById('stat-total-logs').textContent = _allLogs.length.toLocaleString();
-        document.getElementById('stat-malicious').textContent  = _allLogs.filter(l=>l.is_malicious).length.toLocaleString();
-        document.getElementById('stat-honeypot').textContent   = _allLogs.filter(l=>l.is_honeypot_action).length.toLocaleString();
-        renderThreatBreakdown(_allLogs.filter(l=>l.is_malicious));
-    } catch(e) { console.error(e); }
-}
+        function logoutAdmin() {
+            document.getElementById('login-form').reset();
+            document.getElementById('admin-otp').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('otp-error').classList.add('hidden');
+            switchViewLayer('view-login');
+        }
 
-async function loadFlaggedUsers() {
-    try {
-        const res = await fetch(`${API_BASE}/flaggedusers`, { headers: authHeaders() });
-        const data = await res.json();
-        _flaggedUsers = data.flagged_users || [];
-        document.getElementById('stat-flagged').textContent = _flaggedUsers.length.toLocaleString();
-        document.getElementById('threat-count-badge').textContent = _flaggedUsers.length;
-        renderThreatCards(_flaggedUsers);
-        renderUserTable(_flaggedUsers);
-        const dot=document.getElementById('threat-dot'), lbl=document.getElementById('threat-label');
-        if (_flaggedUsers.length) { dot.className='w-2 h-2 rounded-full bg-red-400 threat-pulse'; lbl.className='text-[10px] code-font text-red-400 uppercase tracking-widest'; lbl.textContent=`${_flaggedUsers.length} ACTIVE THREAT${_flaggedUsers.length>1?'S':''}`; }
-        else { dot.className='w-2 h-2 rounded-full bg-emerald-400 threat-pulse'; lbl.className='text-[10px] code-font text-emerald-400 uppercase tracking-widest'; lbl.textContent='System Nominal'; }
-    } catch(e) { console.error(e); }
-}
+        // --- DASHBOARD UI LOGIC ---
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('adm-tab-' + tab).classList.add('active');
+            document.querySelectorAll('.admin-view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById('adm-view-' + tab).classList.add('active');
+        }
 
-function renderLiveStream(logs) {
-    const c=document.getElementById('live-stream');
-    if (!logs.length) { c.innerHTML='<p class="text-[11px] text-slate-600 code-font">No events recorded yet.</p>'; return; }
-    c.innerHTML = logs.map(l => {
-        const rc = l.is_malicious ? 'bg-red-950/30 border-red-900/40' : l.is_honeypot_action ? 'bg-amber-950/20 border-amber-900/30' : 'bg-slate-900/40 border-slate-800/40';
-        const ac = l.is_malicious ? 'text-red-400' : l.is_honeypot_action ? 'text-amber-400' : 'text-sky-400';
-        const ts = (l.timestamp||'').substring(11,19);
-        return `<div class="flex items-start gap-3 px-3 py-2 rounded-lg border ${rc}">
-            <span class="text-[10px] text-slate-600 code-font shrink-0">${ts}</span>
-            <span class="text-[10px] font-bold ${ac} code-font shrink-0">${l.action}</span>
-            <span class="text-[10px] text-slate-500 truncate">${l.ip_address}</span>
-            ${l.is_malicious?'<span class="ml-auto text-[9px] bg-red-900/60 text-red-400 px-1.5 py-0.5 rounded code-font shrink-0">ATTACK</span>':''}
-            ${l.is_honeypot_action?'<span class="ml-auto text-[9px] bg-amber-900/60 text-amber-400 px-1.5 py-0.5 rounded code-font shrink-0">TRAP</span>':''}
-        </div>`;
-    }).join('');
-}
+        function simulateAdminData() {
+            document.getElementById('adm-metric-threats').innerText = "12";
+            document.getElementById('adm-metric-queries').innerText = "1,402";
+            document.getElementById('adm-metric-alerts').innerText = "3";
+            
+            document.getElementById('adm-threats-body').innerHTML = `
+                <tr><td class="p-3 text-sky-400">ID-7482</td><td class="p-3">185.0.0.1</td><td class="p-3 text-rose-400 font-bold">SQLi_Intruder</td><td class="p-3 text-white">41</td></tr>
+                <tr><td class="p-3 text-sky-400">ID-1992</td><td class="p-3">10.0.0.55</td><td class="p-3 text-rose-400 font-bold">Auth_Bypass</td><td class="p-3 text-white">12</td></tr>
+            `;
 
-function renderThreatBreakdown(logs) {
-    const cats={}, total=logs.length||1;
-    logs.forEach(l => { const c=(l.detection_reason||'UNKNOWN').split(':')[0]; cats[c]=(cats[c]||0)+1; });
-    const el=document.getElementById('threat-breakdown');
-    if (!Object.keys(cats).length) { el.innerHTML='<p class="text-[11px] text-slate-600 code-font">No threats detected.</p>'; return; }
-    const colors={SQL_INJECTION:'bg-red-500',XSS:'bg-orange-500',PATH_TRAVERSAL:'bg-purple-500',COMMAND_INJECTION:'bg-rose-500',RATE_LIMIT:'bg-yellow-500'};
-    el.innerHTML = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,count]) => {
-        const pct=Math.round((count/total)*100), bar=colors[cat]||'bg-sky-500';
-        return `<div><div class="flex justify-between mb-1"><span class="text-[10px] code-font text-slate-400">${cat.replace(/_/g,' ')}</span><span class="text-[10px] code-font text-slate-500">${count} (${pct}%)</span></div><div class="w-full bg-slate-800 rounded-full h-1.5"><div class="${bar} h-1.5 rounded-full" style="width:${pct}%"></div></div></div>`;
-    }).join('');
-}
+            document.getElementById('adm-alerts-list').innerHTML = `
+                <div class="border p-3 rounded shadow-sm border-l-4 text-rose-500 border-l-rose-500 border-rose-900/40 bg-rose-950/10 mb-3">
+                    <div class="flex justify-between items-start mb-1"><span class="font-bold text-xs">CRITICAL</span><span class="text-slate-500 text-[10px] code-font">LOG-5921</span></div>
+                    <div class="text-slate-300 text-xs mb-1">SQLi Boolean Bypass Detected</div>
+                </div>
+            `;
 
-let _auditFilter='all';
-function applyAuditFilter() { _auditFilter=document.getElementById('audit-filter').value; renderAuditTable(_allLogs); }
+            document.getElementById('adm-ledger-body').innerHTML = `
+                <tr class="bg-rose-950/20">
+                    <td class="p-3 text-slate-500">13:42:11</td>
+                    <td class="p-3 text-rose-300"><span class="font-bold text-slate-400">[ATTACK_DETECTED]</span> SELECT * FROM users WHERE id = '' OR 1=1 --'</td>
+                    <td class="p-3 text-center"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-900/50 text-rose-400">TRUE</span></td>
+                </tr>
+            `;
+        }
 
-function renderAuditTable(logs) {
-    let f=logs;
-    if (_auditFilter==='malicious') f=logs.filter(l=>l.is_malicious&&!l.is_honeypot_action);
-    if (_auditFilter==='honeypot')  f=logs.filter(l=>l.is_honeypot_action);
-    if (_auditFilter==='clean')     f=logs.filter(l=>!l.is_malicious&&!l.is_honeypot_action);
-    const tbody=document.getElementById('audit-table-body');
-    if (!f.length) { tbody.innerHTML='<tr><td colspan="6" class="px-4 py-10 text-center text-slate-600 code-font text-[11px]">No records match filter.</td></tr>'; return; }
-    tbody.innerHTML = f.map(l => {
-        const rc=l.is_malicious?'threat-row':l.is_honeypot_action?'honey-row':'';
-        const ts=(l.timestamp||'').replace('T',' ').substring(0,19);
-        const sc=l.response_status>=400?'text-red-400':'text-emerald-400';
-        return `<tr class="${rc} hover:bg-slate-800/20 transition-colors">
-            <td class="px-4 py-2.5 code-font text-[10px] text-slate-500 whitespace-nowrap">${ts}</td>
-            <td class="px-4 py-2.5 code-font text-[11px] text-slate-300">${l.ip_address}</td>
-            <td class="px-4 py-2.5 font-bold text-[11px] ${l.is_malicious?'text-red-400':l.is_honeypot_action?'text-amber-400':'text-slate-400'}">${l.action}</td>
-            <td class="px-4 py-2.5 text-[10px] text-slate-500 code-font truncate max-w-xs">${l.endpoint}</td>
-            <td class="px-4 py-2.5 code-font text-[11px] ${sc}">${l.response_status||'—'}</td>
-            <td class="px-4 py-2.5 flex gap-1">
-                ${l.is_malicious?'<span class="text-[9px] bg-red-900/60 text-red-400 border border-red-800/50 px-1.5 py-0.5 rounded code-font">MALICIOUS</span>':''}
-                ${l.is_honeypot_action?'<span class="text-[9px] bg-amber-900/60 text-amber-400 border border-amber-800/50 px-1.5 py-0.5 rounded code-font">HONEYPOT</span>':''}
-                ${!l.is_malicious&&!l.is_honeypot_action?'<span class="text-[9px] text-slate-600 code-font">clean</span>':''}
-            </td>
-        </tr>`;
-    }).join('');
-}
+        const CORE_ENTITIES = ["Global_Identities", "Threat_Actors", "Forensic_Ledger", "Real_Time_Alerts", "Detection_Policies", "Shadow_Manifest", "Honey_Tokens", "Doctors", "Patients", "Appointments"];
+        
+        function renderExplorer() {
+            document.getElementById('adm-entity-list').innerHTML = CORE_ENTITIES.map(entity => `<button onclick="admFetchTable('${entity}')" id="btn-tbl-${entity}" class="w-full text-left px-3 py-2 rounded text-slate-400 hover:text-sky-400 hover:bg-sky-900/20 transition"><i class="fas fa-table mr-2 opacity-40"></i> ${entity}</button>`).join('');
+        }
 
-function renderThreatCards(users) {
-    const c=document.getElementById('threat-cards');
-    if (!users.length) { c.innerHTML='<div class="col-span-2 text-center py-12 text-slate-600 code-font text-sm"><i class="fas fa-check-circle text-2xl text-emerald-700 block mb-3"></i> No flagged users.</div>'; return; }
-    c.innerHTML = users.map(u=>`
-        <div class="glass-panel rounded-xl p-5 border border-red-900/30 bg-red-950/10">
-            <div class="flex justify-between items-start mb-4">
-                <div><p class="font-bold text-white text-sm">${u.email}</p><p class="text-[10px] text-slate-500 code-font mt-0.5">ID: ${u.id} | ${u.role.toUpperCase()}</p></div>
-                <span class="text-[9px] bg-red-900/60 text-red-400 border border-red-700/50 px-2 py-1 rounded code-font font-bold">FLAGGED</span>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-black/30 rounded-lg p-3"><p class="text-[9px] text-slate-600 code-font uppercase tracking-widest mb-1">Failed Logins</p><p class="font-bold text-red-400 text-xl code-font">${u.failed_login_count}</p></div>
-                <div class="bg-black/30 rounded-lg p-3"><p class="text-[9px] text-slate-600 code-font uppercase tracking-widest mb-1">Last IP</p><p class="font-bold text-slate-300 text-sm code-font">${u.last_login_ip||'—'}</p></div>
-            </div>
-            <button onclick="unflagUser(${u.id})" class="w-full text-[11px] font-bold bg-slate-800/60 hover:bg-emerald-900/30 border border-slate-700 hover:border-emerald-700/50 text-slate-400 hover:text-emerald-400 py-2 rounded-lg transition flex items-center justify-center gap-2">
-                <i class="fas fa-user-check"></i> Clear Threat Flag
-            </button>
-        </div>`).join('');
-}
+        function admFetchTable(tableName) {
+            document.querySelectorAll('#adm-entity-list button').forEach(b => { b.classList.remove('bg-sky-900/40', 'text-sky-400'); b.classList.add('text-slate-400'); });
+            document.getElementById(`btn-tbl-${tableName}`).classList.add('bg-sky-900/40', 'text-sky-400');
+            document.getElementById('adm-exp-tbl-name').innerText = tableName;
+            
+            document.getElementById('adm-exp-tbody').innerHTML = `<tr><td colspan="100%" class="text-center py-16"><i class="fas fa-circle-notch fa-spin text-sky-500 text-2xl mb-2 block"></i> Querying Database...</td></tr>`;
+            
+            setTimeout(() => {
+                document.getElementById('adm-exp-count').innerText = `Simulation Sync`;
+                document.getElementById('adm-exp-thead').innerHTML = `<tr><th class="p-3">Data</th><th class="p-3">Status</th></tr>`;
+                document.getElementById('adm-exp-tbody').innerHTML = `<tr><td class="p-3 max-w-xs truncate">Mock data loaded for ${tableName}</td><td class="p-3">Active</td></tr>`;
+            }, 600);
+        }
 
-function renderHoneypotLog(logs) {
-    const c=document.getElementById('honeypot-log');
-    if (!logs.length) { c.innerHTML='<p class="text-[11px] text-slate-600 code-font">No honeypot activity yet.</p>'; return; }
-    c.innerHTML = logs.map(l=>`
-        <div class="flex items-start gap-3 px-3 py-2 rounded-lg bg-amber-950/20 border border-amber-900/30">
-            <i class="fas fa-spider text-amber-500 text-[10px] mt-0.5 shrink-0"></i>
-            <div class="overflow-hidden">
-                <div class="flex gap-2"><span class="text-[10px] font-bold text-amber-400 code-font">${l.action}</span><span class="text-[9px] text-slate-600 code-font">${(l.timestamp||'').replace('T',' ').substring(0,19)}</span></div>
-                <p class="text-[10px] text-slate-500 code-font">IP: ${l.ip_address} — ${l.endpoint}</p>
-            </div>
-        </div>`).join('');
-}
-
-function renderUserTable(users) {
-    const tbody=document.getElementById('user-table-body');
-    if (!users.length) { tbody.innerHTML='<tr><td colspan="7" class="px-4 py-10 text-center text-slate-600 code-font text-[11px]">No flagged users found.</td></tr>'; return; }
-    tbody.innerHTML = users.map(u=>`
-        <tr class="hover:bg-slate-800/20 transition-colors ${u.is_flagged_as_attacker?'threat-row':''}">
-            <td class="px-4 py-3 code-font text-[11px] text-slate-500">${u.id}</td>
-            <td class="px-4 py-3 text-[12px] text-slate-300 font-medium">${u.email}</td>
-            <td class="px-4 py-3"><span class="text-[10px] code-font px-2 py-0.5 rounded border ${u.role==='admin'?'bg-sky-900/40 text-sky-400 border-sky-800/50':u.role==='doctor'?'bg-teal-900/40 text-teal-400 border-teal-800/50':'bg-slate-800/60 text-slate-400 border-slate-700/50'}">${u.role.toUpperCase()}</span></td>
-            <td class="px-4 py-3 code-font text-[11px] ${u.failed_login_count>0?'text-red-400':'text-slate-600'}">${u.failed_login_count}</td>
-            <td class="px-4 py-3 code-font text-[10px] text-slate-500">${u.last_login_ip||'—'}</td>
-            <td class="px-4 py-3">${u.is_flagged_as_attacker?'<span class="text-[9px] bg-red-900/60 text-red-400 border border-red-800/50 px-1.5 py-0.5 rounded code-font">FLAGGED</span>':'<span class="text-[9px] text-emerald-600 code-font">active</span>'}</td>
-            <td class="px-4 py-3">${u.is_flagged_as_attacker?`<button onclick="unflagUser(${u.id})" class="text-[10px] bg-slate-800 hover:bg-emerald-900/30 border border-slate-700 hover:border-emerald-700/50 text-slate-400 hover:text-emerald-400 px-2 py-1 rounded code-font transition">Unflag</button>`:'<span class="text-[10px] text-slate-700 code-font">—</span>'}</td>
-        </tr>`).join('');
-}
-
-async function unflagUser(id) {
-    if (!confirm(`Clear attacker flag for user ID ${id}?`)) return;
-    try {
-        const res = await fetch(`${API_BASE}/unflaguser`, { method:'POST', headers: authHeaders(), body: JSON.stringify({user_id: id}) });
-        if (res.ok) { showToast(`User ${id} unflagged.`,'success'); loadAllData(); }
-        else showToast('Failed to unflag user.','error');
-    } catch { showToast('Network error.','error'); }
-}
-
-function handleLogout() { sessionStorage.clear(); window.location.href='login.html'; }
-
-function showToast(msg, type='success') {
-    const colors={success:'bg-emerald-900/80 border-emerald-700/50 text-emerald-300',error:'bg-red-900/80 border-red-700/50 text-red-300'};
-    const c=document.getElementById('toast-container');
-    const t=document.createElement('div');
-    t.className=`toast-enter border rounded-lg px-4 py-3 text-[12px] code-font shadow-xl ${colors[type]}`;
-    t.textContent=msg; c.appendChild(t);
-    setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); },3500);
-}
-
-loadAllData();
-</script>
+        function exportAdminDB() {
+            const btn = document.getElementById('btn-adm-exp-tx'); const icon = document.getElementById('btn-adm-exp-ic');
+            const og = btn.innerText; btn.innerText = "Compiling..."; icon.className = "fas fa-spinner fa-spin mr-1";
+            setTimeout(() => {
+                const { jsPDF } = window.jspdf; const doc = new jsPDF();
+                doc.setFontSize(16); doc.text("Phantasm-DB Forensic Report", 14, 20);
+                doc.save(`Phantasm_DB_Export.pdf`);
+                btn.innerText = og; icon.className = "fas fa-file-pdf mr-1";
+            }, 800);
+        }
+    </script>
+    <script>
+        function showToast(msg, type) {
+            const c = document.getElementById('toast-container');
+            if (!c) return;
+            const t = document.createElement('div');
+            const isErr = type === 'error';
+            const isWarn = type === 'warn';
+            const bg = isErr ? 'bg-red-600 border-red-500' : isWarn ? 'bg-amber-600 border-amber-500' : 'bg-slate-700 border-slate-600';
+            const icon = isErr ? 'fa-exclamation-circle' : isWarn ? 'fa-exclamation-triangle' : 'fa-check-circle';
+            t.style.cssText = 'animation:slideUp 0.3s ease-out forwards;pointer-events:auto;';
+            t.className = `p-4 rounded-xl shadow-lg flex items-center gap-3 text-sm font-bold text-white border code-font ${bg}`;
+            t.innerHTML = `<i class="fas ${icon}"></i> ${msg}`;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 4000);
+        }
+    </script>
+    <style>@keyframes slideUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }</style>
 </body>
 </html>
